@@ -32,7 +32,7 @@
 - [微调流水线使用说明](docs/finetuning.md)（M1）
 - [推理服务使用说明](docs/serving.md)（M2）
 - [Benchmark 方法论](docs/benchmark-methodology.md)（M3）
-- 部署手册：Compose / Helm（M4/M5 补全）
+- [部署手册](docs/deployment.md)（M4：Compose / M5：Helm）
 
 ## 开发路线图
 
@@ -42,8 +42,8 @@
 | M1 | 微调流水线（LoRA/QLoRA/全参 + 导出 + MLflow） | ✅ 完成 |
 | M2 | 推理服务（OpenAI 兼容 + 多引擎抽象 + 指标） | ✅ 完成 |
 | M3 | Benchmark 系统（三引擎对比 + 瓶颈分析） | ✅ 完成 |
-| M4 | docker-compose 全栈编排 | ⏳ 下一步 |
-| M5 | Kubernetes + Helm + Kueue 调度 | 待开始 |
+| M4 | docker-compose 全栈编排 + 监控工件 | ✅ 完成 |
+| M5 | Kubernetes + Helm + Kueue 调度 | ⏳ 下一步 |
 | M6 | 监控完善（告警 + Benchmark 结果入库） | 待开始 |
 | M7 | 全链路演示闭环 + 作品集化文档 | 待开始 |
 
@@ -76,6 +76,9 @@ make bench CONFIG=configs/bench/smoke_local.yaml                # 本地冒烟�
 make bench CONFIG=configs/bench/smoke_http.yaml                 # 协议路径压测（需先起 serve）
 make bench CONFIG=configs/bench/matrix_qwen25.yaml              # 三引擎对比矩阵（GPU 环境）
 # 报告: runs/bench/<experiment>-*/bench_report.{json,md}
+
+# 部署工件校验（M4，无需 Docker）
+make deploy-validate
 
 # 微调产物（runs/<run>/）
 #   adapter/      LoRA adapter

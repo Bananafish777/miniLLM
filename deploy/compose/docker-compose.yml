@@ -1,0 +1,156 @@
+# miniLLM Compose 栈（基础文件，CPU 可跑：监控 + HF 推理 + MLflow）
+# GPU 服务（vllm/sglang/dcgm）通过 --profile gpu 启用；
+# GPU 资源声明见 docker-compose.gpu.yml（override）。
+#
+# 用法：
+#   演示模式（无 GPU）:
+#     docker compose --env-file .env up -d prometheus grafana serve-hf mlflow
+#   GPU 全栈:
+#     docker compose -f docker-compose.yml -f docker-compose.gpu.yml \
+#       --env-file .env --profile gpu up -d
+#   训练（一次性任务）:
+#     docker compose -f docker-compose.yml -f docker-compose.gpu.yml \
+#       --env-file .env --profile train run --rm train
+name: minillm
+
+x-hf-env: &hf-env
+  HF_ENDPOINT: ${HF_ENDPOINT:-https://hf-mirror.com}
+  HF_HOME: /workspace/data/cache/huggingface
+
+services:
+  # ================= 推理 =================
+  # 主引擎：vLLM OpenAI 兼容服务（Paged Attention / Continuous Batching / KV Cache）
+  vllm:
+    image: vllm/vllm-openai:v0.12.0
+    profiles: ["gpu"]
+    command: >
+      serve ${VLLM_MODEL:-/models/runs/qwen25-1.5b-lora/export}
+      --host 0.0.0.0 --port 8000
+      --max-model-len ${VLLM_MAX_MODEL_LEN:-8192}
+      --gpu-memory-utilization ${VLLM_GPU_MEM_UTIL:-0.85}
+      --max-num-seqs ${VLLM_MAX_NUM_SEQS:-256}
+      --max-num-batched-tokens ${VLLM_MAX_BATCHED_TOKENS:-8192}
+      ${VLLM_PREFIX_CACHING:+--enable-prefix-caching}
+    ports:
+      - "${VLLM_PORT:-8000}:8000"
+    volumes:
+      - ../runs:/models/runs:ro
+      - hf-cache:/root/.cache/huggingface
+    environment: *hf-env
+    shm_size: "8g"            # 张量并行/大 batch 需要
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=4)"]
+      interval: 30s
+      timeout: 5s
+      start_period: 120s
+      retries: 3
+    restart: unless-stopped
+
+  # 对比引擎：SGLang OpenAI 兼容服务
+  sglang:
+    image: lmsysorg/sglang:latest
+    profiles: ["gpu"]
+    command: >
+      python3 -m sglang.launch_server
+      --model-path ${SGLANG_MODEL:-/models/runs/qwen25-1.5b-lora/export}
+      --host 0.0.0.0 --port 30000
+      --tp ${SGLANG_TP:-1}
+      --mem-fraction-static ${SGLANG_MEM_FRACTION:-0.85}
+    ports:
+      - "${SGLANG_PORT:-30000}:30000"
+    volumes:
+      - ../runs:/models/runs:ro
+      - hf-cache:/root/.cache/huggingface
+    environment: *hf-env
+    shm_size: "8g"
+    restart: unless-stopped
+
+  # 平台自带推理服务（Transformers 后端，无 GPU 演示模式）
+  serve-hf:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile.serve
+    command: ["serve", "--config", "configs/serve/hf_qwen25_1p5b.yaml"]
+    ports:
+      - "${SERVE_HF_PORT:-8001}:8000"
+    volumes:
+      - ../runs:/workspace/runs:ro
+      - hf-cache:/workspace/data/cache/huggingface
+    environment: *hf-env
+    restart: unless-stopped
+
+  # ================= 训练（一次性任务） =================
+  train:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile.train
+    profiles: ["train"]
+    command: ["train", "--config", "${TRAIN_CONFIG:-configs/train/lora_qwen25_1p5b.yaml}"]
+    volumes:
+      - ../data:/workspace/data
+      - ../runs:/workspace/runs
+      - hf-cache:/workspace/data/cache/huggingface
+    environment:
+      <<: *hf-env
+      MLFLOW_TRACKING_URI: ${MLFLOW_TRACKING_URI:-http://mlflow:5000}
+    depends_on:
+      - mlflow
+    # GPU 训练时附加 docker-compose.gpu.yml（含 device 声明）
+
+  # ================= 实验追踪 =================
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:latest
+    command: >
+      server --host 0.0.0.0 --port 5000
+      --backend-store-uri sqlite:////mlflow/mlflow.db
+      --default-artifact-root /mlflow/artifacts
+    ports:
+      - "${MLFLOW_PORT:-5000}:5000"
+    volumes:
+      - mlflow-data:/mlflow
+    restart: unless-stopped
+
+  # ================= 可观测性 =================
+  prometheus:
+    image: prom/prometheus:v2.53.0
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=${PROM_RETENTION:-15d}
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    volumes:
+      - ../monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ../monitoring/prometheus/rules:/etc/prometheus/rules:ro
+      - prometheus-data:/prometheus
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:11.1.0
+    ports:
+      - "${GRAFANA_PORT:-3000}:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - ../monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ../monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
+  # GPU 硬件指标（仅 GPU 主机；随 --profile gpu 启用）
+  dcgm-exporter:
+    image: nvidia/dcgm-exporter:3.3.5
+    profiles: ["gpu"]
+    ports:
+      - "${DCGM_PORT:-9400}:9400"
+    restart: unless-stopped
+
+volumes:
+  hf-cache:
+  mlflow-data:
+  prometheus-data:
+  grafana-data:

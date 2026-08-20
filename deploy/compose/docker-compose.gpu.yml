@@ -1,0 +1,40 @@
+# GPU override：为推理/训练服务附加 NVIDIA 设备声明。
+# 用法: docker compose -f docker-compose.yml -f docker-compose.gpu.yml --profile gpu up -d
+# 要求: NVIDIA 驱动 + nvidia-container-toolkit（默认 runtime 为 nvidia 时可省略 runtime 字段）
+
+services:
+  vllm:
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: ${VLLM_GPU_COUNT:-1}
+              capabilities: [gpu]
+
+  sglang:
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: ${SGLANG_GPU_COUNT:-1}
+              capabilities: [gpu]
+
+  train:
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: ${TRAIN_GPU_COUNT:-1}
+              capabilities: [gpu]
+
+  dcgm-exporter:
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]

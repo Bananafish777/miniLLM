@@ -35,6 +35,10 @@ smoke-hub:
 lint:
 	$(UV) run ruff check src tests
 
+## deploy-validate: statically validate compose/monitoring artifacts (no Docker needed)
+deploy-validate:
+	$(PY) scripts/validate_deploy.py
+
 ## train: run finetuning pipeline with a YAML config
 train:
 	$(PY) -m minillm.cli train --config $(CONFIG)

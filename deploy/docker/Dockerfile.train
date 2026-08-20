@@ -1,0 +1,23 @@
+# 训练服务镜像：minillm 包 + PyTorch（Linux 下 pip 安装的 torch 自带 CUDA 运行库，
+# 同一镜像在 GPU（需 nvidia-container-toolkit）与 CPU 主机均可运行）
+FROM python:3.12-slim
+
+WORKDIR /workspace
+
+# 系统依赖（sentencepiece 构建等）
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git curl && rm -rf /var/lib/apt/lists/*
+
+# 先装依赖层（利用构建缓存）
+COPY pyproject.toml README.md ./
+COPY src ./src
+RUN pip install --no-cache-dir -e .
+
+COPY configs ./configs
+
+ENV HF_HOME=/workspace/data/cache/huggingface \
+    PYTHONUNBUFFERED=1
+
+# 训练数据/产物通过 volume 挂载到 /workspace/data 与 /workspace/runs
+ENTRYPOINT ["minillm"]
+CMD ["train", "--config", "configs/train/lora_qwen25_1p5b.yaml"]

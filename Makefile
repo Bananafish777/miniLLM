@@ -55,6 +55,10 @@ helm-validate:
 	.tools/helm lint deploy/helm/minillm
 	.tools/helm template demo deploy/helm/minillm --set training.enabled=true --set bench.enabled=true --set sglang.enabled=true > /dev/null
 
+## demo: end-to-end pipeline demo (finetune -> serve -> OpenAI API -> bench), Mac-runnable
+demo:
+	bash scripts/demo.sh
+
 ## train: run finetuning pipeline with a YAML config
 train:
 	$(PY) -m minillm.cli train --config $(CONFIG)

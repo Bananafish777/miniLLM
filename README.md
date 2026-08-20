@@ -107,6 +107,7 @@ make helm-validate      # helm lint + 全量渲染
 | [架构设计与技术选型](docs/architecture.md) | 需求分析 / 分层架构 / 选型总表 / ADR / 风险 / 路线图 |
 | [面试技术文档](docs/interview.md) | 🎯 项目讲述稿：核心技术问答 / 难点与解决 / 实测数据 / 追问预案 |
 | [微调流水线](docs/finetuning.md) | 数据格式、三模式、产物、MLflow |
+| [模型微调使用指南](docs/training-guide.md) | 🎯 从选模型到部署的完整操作手册（含数据示例/超参速查/FAQ/端到端示例） |
 | [推理服务](docs/serving.md) | OpenAI API、vLLM 旋钮映射、EngineClient |
 | [Benchmark 方法论](docs/benchmark-methodology.md) | 指标口径、公平性、瓶颈规则 |
 | [Web 控制台](docs/web.md) | 管理面板使用与 API |

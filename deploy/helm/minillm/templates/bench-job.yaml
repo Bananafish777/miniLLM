@@ -1,0 +1,53 @@
+{{- if .Values.bench.enabled }}
+# ================= Benchmark Job（三引擎对比压测，经 Kueue 队列调度） =================
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "minillm.fullname" . }}-bench
+  labels:
+    {{- include "minillm.labels" . | nindent 4 }}
+    app: minillm-bench
+  annotations:
+    {{- if .Values.kueue.enabled }}
+    kueue.x-k8s.io/queue-name: {{ .Values.kueue.localQueues.bench }}
+    {{- end }}
+spec:
+  backoffLimit: {{ .Values.bench.backoffLimit }}
+  ttlSecondsAfterFinished: 3600
+  template:
+    metadata:
+      labels:
+        app: minillm-bench
+    spec:
+      restartPolicy: Never
+      nodeSelector:
+        {{- include "minillm.gpuNodeSelector" . | nindent 8 }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ .Values.serviceAccount.name }}
+      containers:
+        - name: bench
+          image: "{{ .Values.image.minillm }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["minillm", "bench", "--config", "{{ .Values.bench.config }}"]
+          env:
+            - name: HF_ENDPOINT
+              value: {{ .Values.env.HF_ENDPOINT | quote }}
+          resources:
+            {{- if .Values.bench.gpu }}
+            limits:
+              nvidia.com/gpu: 1
+            {{- end }}
+            requests:
+              cpu: "4"
+              memory: 8Gi
+          volumeMounts:
+            - name: runs
+              mountPath: /workspace/runs
+      volumes:
+        - name: runs
+          persistentVolumeClaim:
+            claimName: {{ .Values.storage.runsPVC }}
+{{- end }}

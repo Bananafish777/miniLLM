@@ -1,5 +1,91 @@
 # 部署手册（M4 — docker-compose；M5 — Kubernetes）
 
+## M5：Kubernetes + Helm + Kueue 调度
+
+### 组件与角色
+
+| 组件 | 角色 |
+| --- | --- |
+| Helm chart `deploy/helm/minillm` | 一键渲染推理/训练/压测/队列全部清单 |
+| vLLM Deployment + HPA | 常驻推理服务，按排队请求数弹性伸缩 |
+| 训练/压测 Job | 一次性批任务，经 Kueue 队列调度（配额管理） |
+| Kueue ClusterQueue/LocalQueue | GPU 配额、排队、优先级 |
+| prometheus-adapter（外部依赖） | 把 vLLM `/metrics` 暴露为 HPA external 指标 |
+
+### 前置条件
+
+```bash
+# 集群要求
+- Kubernetes 1.28+，GPU 节点（nvidia-device-plugin 已装）
+- GPU 节点打标: kubectl label node <node> gpu=true
+- Kueue 已安装: kubectl apply --server-side -f https://github.com/kubernetes-sigs/kueue/releases/latest/download/manifests.yaml
+- prometheus-adapter（HPA 外部指标）
+- PVC: minillm-models（含微调产物）、minillm-data（训练数据）
+```
+
+### 部署推理服务
+
+```bash
+helm repo add minillm ./deploy/helm 2>/dev/null || true   # 或直接本地路径
+helm upgrade --install minillm deploy/helm/minillm \
+  --namespace minillm --create-namespace \
+  --set storage.modelPVC=minillm-models \
+  --set vllm.model=/models/runs/qwen25-1.5b-lora/export
+
+# 验证
+kubectl get deploy,svc,hpa -n minillm
+kubectl exec -n minillm deploy/minillm-vllm -- curl -s localhost:8000/v1/models
+```
+
+### 提交训练/压测任务（Kueue 队列）
+
+```bash
+# 训练（经 LocalQueue minillm-training 排队，受 ClusterQueue GPU 配额约束）
+helm upgrade --install minillm deploy/helm/minillm \
+  --set training.enabled=true \
+  --set training.config=configs/train/lora_qwen25_1p5b.yaml
+
+kubectl get workloads -n minillm          # Kueue Workload 状态（admitted/pending）
+kubectl get clusterqueue minillm-gpu -o yaml   # 配额使用情况
+
+# 压测（三引擎对比）
+helm upgrade --install minillm deploy/helm/minillm \
+  --set bench.enabled=true \
+  --set bench.config=configs/bench/matrix_qwen25.yaml
+```
+
+### HPA 弹性伸缩
+
+```yaml
+# values.yaml 中已预置：平均排队请求 > 20 时扩容（1 → 4 副本）
+# HPA external 指标依赖 prometheus-adapter 配置：
+#   - 从 vllm 服务抓取 vllm:num_requests_waiting
+#   - 对外暴露为 external.metrics.k8s.io/vllm_num_requests_waiting
+kubectl get hpa minillm-vllm -n minillm -w   # 观察扩缩容
+```
+
+### GPU 调度策略汇总
+
+| 策略 | 实现 |
+| --- | --- |
+| GPU 资源声明 | `resources.limits.nvidia.com/gpu`（Deployment/Job 均声明） |
+| 节点绑定 | nodeSelector `gpu=true` + tolerations |
+| 批任务排队 | Kueue ClusterQueue 配额（cpu/memory/nvidia.com/gpu）→ LocalQueue 注解 |
+| 服务弹性 | HPA external 指标（vLLM 排队数） |
+| 张量并行 | `vllm.tensorParallelSize` = 副本内 GPU 数 |
+
+### 本地验证（无集群）
+
+```bash
+make helm-tool        # 下载 helm 到 .tools/
+make helm-validate    # lint + 全量渲染
+make test             # 含 helm 渲染/引用完整性测试
+```
+
+---
+
+## M4：docker-compose（开发/演示）
+
 ## 架构
 
 ```

@@ -39,6 +39,22 @@ lint:
 deploy-validate:
 	$(PY) scripts/validate_deploy.py
 
+## helm-tool: download helm binary into .tools/ (no install needed)
+helm-tool:
+	@mkdir -p .tools
+	@VER=$$(curl -s --max-time 10 "https://api.github.com/repos/helm/helm/releases/latest" | $(PY) -c "import json,sys; print(json.load(sys.stdin)['tag_name'])"); \
+	ARCH=$$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/'); \
+	OS=$$(uname -s | tr 'A-Z' 'a-z'); \
+	curl -sL --max-time 120 -o .tools/helm.tar.gz "https://get.helm.sh/helm-$${VER}-$${OS}-$${ARCH}.tar.gz" && \
+	tar -xzf .tools/helm.tar.gz -C .tools && mv .tools/$${OS}-$${ARCH}/helm .tools/helm && \
+	chmod +x .tools/helm && rm -rf .tools/helm.tar.gz .tools/$${OS}-$${ARCH} && \
+	.tools/helm version --short
+
+## helm-validate: lint + render the Helm chart
+helm-validate:
+	.tools/helm lint deploy/helm/minillm
+	.tools/helm template demo deploy/helm/minillm --set training.enabled=true --set bench.enabled=true --set sglang.enabled=true > /dev/null
+
 ## train: run finetuning pipeline with a YAML config
 train:
 	$(PY) -m minillm.cli train --config $(CONFIG)

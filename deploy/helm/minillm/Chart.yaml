@@ -1,0 +1,15 @@
+apiVersion: v2
+name: minillm
+description: End-to-end LLM infrastructure platform — vLLM/SGLang inference, finetuning, benchmark jobs, Kueue GPU queueing, HPA autoscaling
+type: application
+version: 0.1.0
+appVersion: 0.1.0
+keywords:
+  - llm
+  - vllm
+  - sglang
+  - finetuning
+  - benchmark
+  - kueue
+maintainers:
+  - name: minillm

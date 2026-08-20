@@ -1,0 +1,87 @@
+{{- if .Values.sglang.enabled }}
+# ================= SGLang 推理服务（Benchmark 对照组） =================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "minillm.fullname" . }}-sglang
+  labels:
+    {{- include "minillm.labels" . | nindent 4 }}
+    app: minillm-sglang
+spec:
+  replicas: {{ .Values.sglang.replicaCount }}
+  selector:
+    matchLabels:
+      app: minillm-sglang
+  template:
+    metadata:
+      labels:
+        app: minillm-sglang
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "{{ .Values.sglang.service.port }}"
+    spec:
+      nodeSelector:
+        {{- include "minillm.gpuNodeSelector" . | nindent 8 }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ .Values.serviceAccount.name }}
+      containers:
+        - name: sglang
+          image: "{{ .Values.image.sglang }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["python3", "-m", "sglang.launch_server"]
+          args:
+            - --model-path
+            - {{ .Values.sglang.model }}
+            - --host
+            - 0.0.0.0
+            - --port
+            - "{{ .Values.sglang.service.port }}"
+            - --tp
+            - "{{ .Values.sglang.tpSize }}"
+            - --mem-fraction-static
+            - "{{ .Values.sglang.memFractionStatic }}"
+          env:
+            - name: HF_ENDPOINT
+              value: {{ .Values.env.HF_ENDPOINT | quote }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.sglang.service.port }}
+          resources:
+            limits:
+              nvidia.com/gpu: {{ .Values.sglang.gpuCount }}
+            requests:
+              nvidia.com/gpu: {{ .Values.sglang.gpuCount }}
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 60
+            periodSeconds: 10
+          volumeMounts:
+            - name: models
+              mountPath: /models
+              readOnly: true
+      volumes:
+        - name: models
+          persistentVolumeClaim:
+            claimName: {{ .Values.storage.modelPVC }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "minillm.fullname" . }}-sglang
+  labels:
+    {{- include "minillm.labels" . | nindent 4 }}
+    app: minillm-sglang
+spec:
+  type: {{ .Values.sglang.service.type }}
+  selector:
+    app: minillm-sglang
+  ports:
+    - name: http
+      port: {{ .Values.sglang.service.port }}
+      targetPort: http
+{{- end }}

@@ -1,0 +1,32 @@
+miniLLM 已部署（release: {{ .Release.Name }} / namespace: {{ .Release.Namespace }}）
+
+组件:
+{{- if .Values.vllm.enabled }}
+  vLLM 推理服务:  kubectl get svc {{ include "minillm.fullname" . }}-vllm
+    OpenAI 端点:  http://{{ include "minillm.fullname" . }}-vllm:{{ .Values.vllm.service.port }}/v1
+    HPA:          kubectl get hpa {{ include "minillm.fullname" . }}-vllm
+{{- end }}
+{{- if .Values.sglang.enabled }}
+  SGLang 推理服务: kubectl get svc {{ include "minillm.fullname" . }}-sglang
+{{- end }}
+{{- if .Values.kueue.enabled }}
+  Kueue 队列:
+    ClusterQueue:  {{ .Values.kueue.clusterQueue.name }}
+    LocalQueues:   {{ .Values.kueue.localQueues.training }} / {{ .Values.kueue.localQueues.bench }}
+    提交训练:      helm upgrade --install minillm deploy/helm/minillm \
+                     --set training.enabled=true \
+                     --set training.config=configs/train/lora_qwen25_1p5b.yaml
+{{- end }}
+
+监控:
+  服务指标经 Prometheus 抓取（annotation prometheus.io/scrape）
+  {{- if .Values.monitoring.serviceMonitor.enabled }}
+  ServiceMonitor: {{ include "minillm.fullname" . }}
+  {{- else }}
+  启用 ServiceMonitor: --set monitoring.serviceMonitor.enabled=true（需 kube-prometheus-stack）
+  {{- end }}
+
+注意: 部署前请确认
+  1) GPU 节点已打标 nodeSelector gpu=true（见 values.nodeSelector）
+  2) PVC {{ .Values.storage.modelPVC }} 已包含微调产物（runs/<run>/export）
+  3) HPA 外部指标依赖 prometheus-adapter（见 docs/deployment.md M5 节）

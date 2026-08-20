@@ -1,0 +1,44 @@
+{{- if .Values.kueue.enabled }}
+# ================= Kueue GPU 队列调度 =================
+# ClusterQueue：集群级 GPU/CPU/内存配额（多租户排队、抢占、优先级）
+apiVersion: kueue.x-k8s.io/v1beta1
+kind: ClusterQueue
+metadata:
+  name: {{ .Values.kueue.clusterQueue.name }}
+  labels:
+    {{- include "minillm.labels" . | nindent 4 }}
+spec:
+  namespaceSelector: {}   # 对所有 namespace 开放
+  resourceGroups:
+    - coveredResources: ["cpu", "memory", "nvidia.com/gpu"]
+      flavors:
+        - name: gpu-flavor
+          resources:
+            - name: cpu
+              nominalQuota: {{ .Values.kueue.clusterQueue.quota.cpu | quote }}
+            - name: memory
+              nominalQuota: {{ .Values.kueue.clusterQueue.quota.memory | quote }}
+            - name: nvidia.com/gpu
+              nominalQuota: {{ .Values.kueue.clusterQueue.quota.gpu | quote }}
+---
+# LocalQueue：命名空间内的工作负载入口（训练/压测 Job 通过注解接入）
+apiVersion: kueue.x-k8s.io/v1beta1
+kind: LocalQueue
+metadata:
+  name: {{ .Values.kueue.localQueues.training }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "minillm.labels" . | nindent 4 }}
+spec:
+  clusterQueue: {{ .Values.kueue.clusterQueue.name }}
+---
+apiVersion: kueue.x-k8s.io/v1beta1
+kind: LocalQueue
+metadata:
+  name: {{ .Values.kueue.localQueues.bench }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "minillm.labels" . | nindent 4 }}
+spec:
+  clusterQueue: {{ .Values.kueue.clusterQueue.name }}
+{{- end }}

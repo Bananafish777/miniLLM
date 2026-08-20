@@ -1,0 +1,103 @@
+# miniLLM Helm values — 环境差异收敛点（部署时用 -f 覆盖）
+
+image:
+  vllm: vllm/vllm-openai:v0.12.0
+  sglang: lmsysorg/sglang:latest
+  minillm: minillm:0.1.0            # 自建镜像（deploy/docker/Dockerfile.*）推送后的地址
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+
+serviceAccount:
+  create: true
+  name: minillm
+
+# GPU 节点打标 gpu=true（nodeSelector 统一入口）
+nodeSelector:
+  gpu: "true"
+tolerations: []
+#  - key: nvidia.com/gpu
+#    operator: Exists
+#    effect: NoSchedule
+
+# 模型/数据产物存储（PVC 名称，由管理员预建或 storageClass 动态供给）
+storage:
+  modelPVC: minillm-models
+  dataPVC: minillm-data
+  runsPVC: minillm-runs
+
+# ---------------------------------------------------------------- 推理: vLLM
+vllm:
+  enabled: true
+  replicaCount: 1
+  model: /models/runs/qwen25-1.5b-lora/export   # PVC 内微调产物路径
+  # --- vLLM 性能旋钮（Paged Attention / Continuous Batching / KV Cache）---
+  gpuMemoryUtilization: 0.85     # KV Cache 显存预算
+  maxModelLen: 8192
+  maxNumSeqs: 256                # Continuous Batching 并发上限
+  maxNumBatchedTokens: 8192
+  enablePrefixCaching: true      # 前缀 KV 复用
+  tensorParallelSize: 1          # 多卡张量并行
+  gpuCount: 1                    # 每副本 GPU 数（= TP 时需与 tensorParallelSize 一致）
+  resources:
+    limits: { cpu: "8", memory: 32Gi }
+    requests: { cpu: "4", memory: 16Gi }
+  service:
+    port: 8000
+    type: ClusterIP
+  hpa:
+    enabled: true
+    minReplicas: 1
+    maxReplicas: 4
+    # 外部指标: 平均排队请求数（需 prometheus-adapter 提供 vllm_num_requests_waiting）
+    metricName: vllm_num_requests_waiting
+    targetAverageValue: 20
+
+# ---------------------------------------------------------------- 推理: SGLang（对比）
+sglang:
+  enabled: false
+  replicaCount: 1
+  model: /models/runs/qwen25-1.5b-lora/export
+  gpuCount: 1
+  tpSize: 1
+  memFractionStatic: 0.85
+  service:
+    port: 30000
+    type: ClusterIP
+
+# ---------------------------------------------------------------- 训练 Job
+training:
+  enabled: false
+  config: configs/train/lora_qwen25_1p5b.yaml   # 镜像内配置（或用 PVC 挂载）
+  gpu: true
+  gpuCount: 1
+  backoffLimit: 2
+  ttlSecondsAfterFinished: 3600
+
+# ---------------------------------------------------------------- Benchmark Job
+bench:
+  enabled: false
+  config: configs/bench/matrix_qwen25.yaml
+  gpu: true
+  backoffLimit: 1
+
+# ---------------------------------------------------------------- Kueue 队列调度
+kueue:
+  enabled: true
+  clusterQueue:
+    name: minillm-gpu
+    quota: { cpu: "32", memory: 128Gi, gpu: 2 }   # 集群 GPU 配额（nominalQuota）
+  localQueues:
+    inference: minillm-inference
+    training: minillm-training
+    bench: minillm-bench
+
+# ---------------------------------------------------------------- 监控
+monitoring:
+  serviceMonitor:
+    enabled: false               # 需要 prometheus-operator/kube-prometheus-stack
+    interval: 15s
+
+env:
+  HF_ENDPOINT: https://hf-mirror.com
+  MLFLOW_TRACKING_URI: http://mlflow:5000

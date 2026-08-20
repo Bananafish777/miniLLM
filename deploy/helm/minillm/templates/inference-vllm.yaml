@@ -1,0 +1,129 @@
+{{- if .Values.vllm.enabled }}
+# ================= vLLM 推理服务（Paged Attention / Continuous Batching / KV Cache） =================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "minillm.fullname" . }}-vllm
+  labels:
+    {{- include "minillm.labels" . | nindent 4 }}
+    app: minillm-vllm
+spec:
+  replicas: {{ .Values.vllm.replicaCount }}
+  selector:
+    matchLabels:
+      app: minillm-vllm
+  template:
+    metadata:
+      labels:
+        app: minillm-vllm
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "{{ .Values.vllm.service.port }}"
+    spec:
+      nodeSelector:
+        {{- include "minillm.gpuNodeSelector" . | nindent 8 }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ .Values.serviceAccount.name }}
+      containers:
+        - name: vllm
+          image: "{{ .Values.image.vllm }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+            - serve
+            - {{ .Values.vllm.model }}
+            - --host
+            - 0.0.0.0
+            - --port
+            - "{{ .Values.vllm.service.port }}"
+            - --gpu-memory-utilization
+            - "{{ .Values.vllm.gpuMemoryUtilization }}"
+            - --max-model-len
+            - "{{ .Values.vllm.maxModelLen }}"
+            - --max-num-seqs
+            - "{{ .Values.vllm.maxNumSeqs }}"
+            - --max-num-batched-tokens
+            - "{{ .Values.vllm.maxNumBatchedTokens }}"
+            - --tensor-parallel-size
+            - "{{ .Values.vllm.tensorParallelSize }}"
+            {{- if .Values.vllm.enablePrefixCaching }}
+            - --enable-prefix-caching
+            {{- end }}
+          env:
+            - name: HF_ENDPOINT
+              value: {{ .Values.env.HF_ENDPOINT | quote }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.vllm.service.port }}
+          resources:
+            limits:
+              nvidia.com/gpu: {{ .Values.vllm.gpuCount }}
+              {{- toYaml .Values.vllm.resources.limits | nindent 14 }}
+            requests:
+              {{- toYaml .Values.vllm.resources.requests | nindent 14 }}
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 60
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 120
+            periodSeconds: 30
+          volumeMounts:
+            - name: models
+              mountPath: /models
+              readOnly: true
+      volumes:
+        - name: models
+          persistentVolumeClaim:
+            claimName: {{ .Values.storage.modelPVC }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "minillm.fullname" . }}-vllm
+  labels:
+    {{- include "minillm.labels" . | nindent 4 }}
+    app: minillm-vllm
+spec:
+  type: {{ .Values.vllm.service.type }}
+  selector:
+    app: minillm-vllm
+  ports:
+    - name: http
+      port: {{ .Values.vllm.service.port }}
+      targetPort: http
+---
+{{- if .Values.vllm.hpa.enabled }}
+# HPA：基于 vLLM 排队请求数（external 指标，由 prometheus-adapter 提供）
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "minillm.fullname" . }}-vllm
+  labels:
+    {{- include "minillm.labels" . | nindent 4 }}
+    app: minillm-vllm
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "minillm.fullname" . }}-vllm
+  minReplicas: {{ .Values.vllm.hpa.minReplicas }}
+  maxReplicas: {{ .Values.vllm.hpa.maxReplicas }}
+  metrics:
+    - type: External
+      external:
+        metric:
+          name: {{ .Values.vllm.hpa.metricName }}
+        target:
+          type: AverageValue
+          averageValue: {{ .Values.vllm.hpa.targetAverageValue }}
+{{- end }}
+{{- end }}

@@ -10,6 +10,11 @@ dist/
 .venv/
 venv/
 .uv-cache/
+.uv-python/
+.uv-state/
+
+# Local tools (helm etc.)
+.tools/
 
 # Runtime artifacts
 runs/

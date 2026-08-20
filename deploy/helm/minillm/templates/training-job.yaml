@@ -1,0 +1,73 @@
+{{- if .Values.training.enabled }}
+# ================= 微调训练 Job（经 Kueue 队列调度，GPU 配额管理） =================
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "minillm.fullname" . }}-train
+  labels:
+    {{- include "minillm.labels" . | nindent 4 }}
+    app: minillm-train
+  annotations:
+    {{- if .Values.kueue.enabled }}
+    kueue.x-k8s.io/queue-name: {{ .Values.kueue.localQueues.training }}
+    {{- end }}
+spec:
+  backoffLimit: {{ .Values.training.backoffLimit }}
+  ttlSecondsAfterFinished: {{ .Values.training.ttlSecondsAfterFinished }}
+  template:
+    metadata:
+      labels:
+        app: minillm-train
+    spec:
+      restartPolicy: Never
+      nodeSelector:
+        {{- include "minillm.gpuNodeSelector" . | nindent 8 }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ .Values.serviceAccount.name }}
+      containers:
+        - name: train
+          image: "{{ .Values.image.minillm }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["minillm", "train", "--config", "{{ .Values.training.config }}"]
+          env:
+            - name: HF_ENDPOINT
+              value: {{ .Values.env.HF_ENDPOINT | quote }}
+            - name: MLFLOW_TRACKING_URI
+              value: {{ .Values.env.MLFLOW_TRACKING_URI | quote }}
+          resources:
+            {{- if .Values.training.gpu }}
+            limits:
+              nvidia.com/gpu: {{ .Values.training.gpuCount }}
+            {{- end }}
+            requests:
+              cpu: "4"
+              memory: 8Gi
+          volumeMounts:
+            - name: data
+              mountPath: /workspace/data
+            - name: runs
+              mountPath: /workspace/runs
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ .Values.storage.dataPVC }}
+        - name: runs
+          persistentVolumeClaim:
+            claimName: {{ .Values.storage.runsPVC }}
+---
+# 训练/推理共享的模型产物存储（runs PVC 由管理员预建或改用动态供给）
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .Values.storage.runsPVC }}
+  labels:
+    {{- include "minillm.labels" . | nindent 4 }}
+spec:
+  accessModes: ["ReadWriteMany"]
+  resources:
+    requests:
+      storage: 20Gi
+{{- end }}

@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>miniLLM Admin Console</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo">⚡</span>
+      <div>
+        <h1>miniLLM Admin Console</h1>
+        <div class="sub" id="serve-name">loading…</div>
+      </div>
+    </div>
+    <div class="status-pill" id="refresh-pill">● 连接中</div>
+  </header>
+
+  <main>
+    <!-- 引擎状态 -->
+    <section>
+      <h2>推理引擎状态 <button class="ghost" id="btn-refresh">刷新</button></h2>
+      <div class="card-grid" id="engine-cards"><!-- JS 渲染 --></div>
+    </section>
+
+    <!-- GPU（可选：prometheus_url 配置后启用） -->
+    <section id="gpu-section" hidden>
+      <h2>GPU 硬件指标 <span class="hint">（经 Prometheus）</span></h2>
+      <div class="card-grid" id="gpu-cards"></div>
+    </section>
+
+    <!-- Benchmark -->
+    <section>
+      <h2>Benchmark 结果 <span class="hint">runs/bench/*/bench_report.json</span></h2>
+      <div id="bench-list"><div class="empty">暂无数据</div></div>
+    </section>
+
+    <!-- 训练 -->
+    <section>
+      <h2>微调运行 <span class="hint">runs/*/metrics.json</span></h2>
+      <div id="train-list"><div class="empty">暂无数据</div></div>
+    </section>
+  </main>
+
+  <footer>miniLLM · EngineClient 统一抽象 · 数据来自各引擎 /metrics 与本地报告</footer>
+  <script src="/static/app.js"></script>
+</body>
+</html>

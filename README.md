@@ -19,6 +19,7 @@
 | 📊 Benchmark | 自研 asyncio 压测客户端 | 吞吐 / TTFT / ITL / 端到端 / 显存峰值；双通道交叉验证；瓶颈分析；JSON+MD 报告 |
 | 🚀 部署调度 | Docker · docker-compose · Kubernetes · Helm · Kueue | 八服务 Compose 栈；GPU override；Kueue 配额队列；HPA 弹性伸缩 |
 | 📈 可观测性 | Prometheus · Grafana · DCGM · Pushgateway | GPU 利用率/显存/温度；服务吞吐/排队/TTFT 分位；6 条告警规则；Benchmark/训练结果入库 |
+| 🖥️ Web 控制台 | FastAPI + 原生 JS（零构建） | 引擎状态 / GPU 指标 / Benchmark 对比 / 微调运行 一站式管理面板 |
 
 ## 系统架构
 
@@ -64,6 +65,10 @@ curl http://127.0.0.1:8000/v1/chat/completions -H 'Content-Type: application/jso
 # Benchmark（M3）— 三引擎对比
 make bench CONFIG=configs/bench/matrix_qwen25.yaml        # 报告: runs/bench/*/bench_report.md
 
+# Web 管理控制台（引擎/GPU/Benchmark/训练 面板）
+make serve CONFIG=configs/serve/hf_tiny.yaml              # 先起一个引擎
+minillm web --config configs/web/admin.yaml               # 打开 http://127.0.0.1:8080
+
 # 容器化 + 监控（M4/M6）
 cd deploy/compose && cp .env.example .env
 docker compose --env-file .env up -d prometheus grafana serve-hf mlflow pushgateway
@@ -100,9 +105,11 @@ make helm-validate      # helm lint + 全量渲染
 | 文档 | 内容 |
 | --- | --- |
 | [架构设计与技术选型](docs/architecture.md) | 需求分析 / 分层架构 / 选型总表 / ADR / 风险 / 路线图 |
+| [面试技术文档](docs/interview.md) | 🎯 项目讲述稿：核心技术问答 / 难点与解决 / 实测数据 / 追问预案 |
 | [微调流水线](docs/finetuning.md) | 数据格式、三模式、产物、MLflow |
 | [推理服务](docs/serving.md) | OpenAI API、vLLM 旋钮映射、EngineClient |
 | [Benchmark 方法论](docs/benchmark-methodology.md) | 指标口径、公平性、瓶颈规则 |
+| [Web 控制台](docs/web.md) | 管理面板使用与 API |
 | [部署手册](docs/deployment.md) | Compose / Helm / Kueue / HPA / Pushgateway |
 
 ## 路线图（全部完成 ✅）

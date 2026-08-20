@@ -1,0 +1,25 @@
+# Web 管理控制台 — 引擎状态 / GPU 指标 / Benchmark 结果 / 微调运行
+# 用法: minillm web --config configs/web/admin.yaml
+#   打开 http://127.0.0.1:8080
+serve_name: minillm-admin
+host: 127.0.0.1
+port: 8080
+
+# 要监控的推理引擎（/metrics + /v1/models）
+engines:
+  - name: vllm-main
+    type: vllm
+    base_url: http://127.0.0.1:8000
+  - name: sglang-bench
+    type: sglang
+    base_url: http://127.0.0.1:30000
+  - name: hf-local
+    type: hf
+    base_url: http://127.0.0.1:8001
+
+bench_dir: runs/bench        # Benchmark 报告目录
+train_dir: runs              # 微调运行目录
+refresh_interval_s: 5        # 前端自动刷新间隔
+
+# 可选：Prometheus 代理（GPU 面板；compose 栈运行时可指向 http://127.0.0.1:9090）
+# prometheus_url: http://127.0.0.1:9090

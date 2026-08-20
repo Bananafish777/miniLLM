@@ -20,6 +20,7 @@ from minillm.serve.config import ServeConfig
 from minillm.serve.launch import serve
 from minillm.train.config import TrainRunConfig
 from minillm.train.trainer import run_train
+from minillm.web.config import WebConfig
 
 
 def _add_config_arg(parser: argparse.ArgumentParser, required: bool = True) -> None:
@@ -45,6 +46,22 @@ def _cmd_bench(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_web(args: argparse.Namespace) -> int:
+    import logging
+
+    import uvicorn
+
+    from minillm.web.app import build_web_app
+
+    cfg = load_model_config(WebConfig, args.config, args.override)
+    logging.getLogger("minillm.cli").info(
+        "starting admin console on http://%s:%s (engines=%d)",
+        cfg.host, cfg.port, len(cfg.engines),
+    )
+    uvicorn.run(build_web_app(cfg), host=cfg.host, port=cfg.port, log_level="info")
+    return 0
+
+
 def _cmd_not_ready(name: str, milestone: str) -> int:
     print(f"[minillm] `{name}` is scheduled for {milestone} — not implemented yet.", file=sys.stderr)
     return 2
@@ -65,6 +82,9 @@ def main(argv: list[str] | None = None) -> int:
     p_bench = sub.add_parser("bench", help="run the benchmark matrix (Transformers/vLLM/SGLang)")
     _add_config_arg(p_bench)
 
+    p_web = sub.add_parser("web", help="start the web admin console (engine/GPU/bench/train dashboard)")
+    _add_config_arg(p_web)
+
     args = parser.parse_args(argv)
     setup_logging()
 
@@ -72,7 +92,9 @@ def main(argv: list[str] | None = None) -> int:
         return _cmd_train(args)
     if args.command == "serve":
         return _cmd_serve(args)
-    return _cmd_bench(args)
+    if args.command == "bench":
+        return _cmd_bench(args)
+    return _cmd_web(args)
 
     # unreachable
     return 0

@@ -1,5 +1,5 @@
-# Hub-path smoke test: 真实加载流程（HF 官方被墙时自动走 hf-mirror.com）
-# 用法: HF_ENDPOINT=https://hf-mirror.com python -m minillm.cli train --config configs/train/smoke_hub.yaml
+# Hub-path smoke test: 加载真实预训练模型（先用 scripts/fetch_model.sh 拉到本地）
+# 用法: make smoke-hub   （自动拉取模型并跑测试）
 experiment_name: smoke-hub
 finetune_mode: lora
 
@@ -10,11 +10,11 @@ data:
   max_seq_len: 256
 
 model:
-  name_or_path: hf-internal-testing/tiny-random-LlamaForCausalLM
-  tokenizer_name: hf-internal-testing/llama-tokenizer
+  name_or_path: data/models/tiny-random-LlamaForCausalLM   # 本地真实权重（fetch_model.sh 拉取）
+  tokenizer_name: null
   source: hub
   dtype: fp32
-  attn_impl: eager              # tiny 模型无 sdpa 兼容性问题，但 eager 最稳
+  attn_impl: eager              # tiny 模型最稳
 
 lora:
   r: 4

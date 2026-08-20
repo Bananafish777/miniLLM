@@ -1,6 +1,11 @@
 SHELL := /bin/bash
 PY := .venv/bin/python
 UV := uv
+# 沙箱/受限环境: 把 uv 的缓存与 Python 安装目录放在工作区内
+export UV_CACHE_DIR := $(CURDIR)/.uv-cache
+export UV_PYTHON_INSTALL_DIR := $(CURDIR)/.uv-python
+export UV_STATE_DIR := $(CURDIR)/.uv-state
+export HF_HOME := $(CURDIR)/data/cache/huggingface
 
 .PHONY: setup test smoke smoke-hub lint train help
 
@@ -17,9 +22,10 @@ test:
 smoke:
 	$(PY) -m pytest -m smoke -q
 
-## smoke-hub: hub-path smoke test via HuggingFace mirror (set HF_ENDPOINT if needed)
+## smoke-hub: hub-path smoke test (fetch real tiny checkpoint via curl mirror, then test)
 smoke-hub:
-	HF_ENDPOINT=$${HF_ENDPOINT:-https://hf-mirror.com} $(PY) -m pytest -m hub -q
+	@test -f data/models/tiny-random-LlamaForCausalLM/model.safetensors || scripts/fetch_model.sh
+	$(PY) -m pytest -m hub -q
 
 ## lint: ruff check
 lint:

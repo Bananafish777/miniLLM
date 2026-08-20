@@ -6,11 +6,8 @@ tiny-GPT-2 path used by smoke tests and demos.
 
 from __future__ import annotations
 
-import logging
 import os
 from pathlib import Path
-
-import torch
 
 from minillm.common.logging import get_logger
 from minillm.common.utils import (
@@ -60,9 +57,17 @@ def _load_tokenizer(cfg: TrainRunConfig, device: str, texts: list[str] | None):
 
 
 def _build_training_args(cfg: TrainRunConfig, dtype_name: str, device: str):
+    import inspect
+
     from transformers import TrainingArguments
 
     t = cfg.train
+    ta_params = inspect.signature(TrainingArguments.__init__).parameters
+    # transformers >=5 移除了 warmup_ratio；warmup_steps 传小数即为比例
+    if "warmup_ratio" in ta_params:
+        warmup_kwargs = {"warmup_ratio": t.warmup_ratio}
+    else:
+        warmup_kwargs = {"warmup_steps": t.warmup_ratio}
     return TrainingArguments(
         output_dir=t.output_dir,
         seed=t.seed,
@@ -74,7 +79,7 @@ def _build_training_args(cfg: TrainRunConfig, dtype_name: str, device: str):
         learning_rate=t.learning_rate,
         weight_decay=t.weight_decay,
         lr_scheduler_type=t.lr_scheduler_type,
-        warmup_ratio=t.warmup_ratio,
+        **warmup_kwargs,
         logging_steps=t.logging_steps,
         eval_strategy=t.eval_strategy,
         eval_steps=t.eval_steps,
@@ -129,7 +134,7 @@ def run_train(cfg: TrainRunConfig) -> dict:
     log.info("samples: train=%d val=%s", len(train_raw), len(val_raw) if val_raw else "n/a")
 
     # 2) tokenizer ----------------------------------------------------------
-    texts = [f"{p}\n{r}" for p, r in zip(raw["prompt"], raw["response"])] if "prompt" in raw.column_names else raw["text"]
+    texts = [f"{p}\n{r}" for p, r in zip(raw["prompt"], raw["response"], strict=True)] if "prompt" in raw.column_names else raw["text"]
     tokenizer = _load_tokenizer(cfg, device, texts)
 
     # 3) tokenize -----------------------------------------------------------

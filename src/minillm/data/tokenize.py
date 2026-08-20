@@ -31,19 +31,22 @@ EOS_SUFFIX = "\n"  # appended to responses without EOS token (text-based formats
 # ------------------------------------------------------------------ helpers
 
 def _tokenize_pair(tokenizer, prompt: str, response: str, max_seq_len: int) -> dict[str, list[int]]:
-    """Tokenize (prompt, response) with prompt-masked labels and truncation."""
+    """Tokenize (prompt, response) with prompt-masked labels and truncation.
+
+    Budget plan (eos accounted for): response keeps at least a 16-token floor
+    and at most ``max_seq_len - 1 - 16`` tokens; the prompt tail fills the rest.
+    """
+    eos_id = tokenizer.eos_token_id
     prompt_ids = tokenizer(prompt, add_special_tokens=False).input_ids
     resp_ids = tokenizer(response, add_special_tokens=False).input_ids
 
-    # keep at least 16 response tokens; truncate prompt first, then response
-    budget = max_seq_len - len(resp_ids) - 1
-    if budget < 16:
-        resp_ids = resp_ids[: max_seq_len - 16]
-        budget = 16
+    resp_cap = max_seq_len - 1 - 16 if eos_id is not None else max_seq_len - 16
+    if len(resp_ids) > resp_cap:
+        resp_ids = resp_ids[:resp_cap]
+    budget = max_seq_len - len(resp_ids) - (1 if eos_id is not None else 0)
     if len(prompt_ids) > budget:
         prompt_ids = prompt_ids[-budget:]  # keep the tail (closest to response)
 
-    eos_id = tokenizer.eos_token_id
     if eos_id is not None:
         resp_ids = resp_ids + [eos_id]
 

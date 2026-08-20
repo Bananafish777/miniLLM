@@ -116,11 +116,21 @@ def auto_target_modules(model: nn.Module) -> list[str]:
     """Auto-detect LoRA target modules from the architecture.
 
     Prefers known attention/MLP projection names (Llama/Qwen/GPT-2 families);
-    falls back to every Linear except the LM head.
+    falls back to every linear projection except the LM head. Handles both
+    ``nn.Linear`` and transformers' GPT-2 ``Conv1D``.
     """
-    linear_names = [
-        name for name, mod in model.named_modules() if isinstance(mod, nn.Linear)
-    ]
+    try:
+        from transformers.pytorch_utils import Conv1D  # transformers >= 5
+    except ImportError:  # pragma: no cover
+        try:
+            from transformers.modeling_utils import Conv1D  # transformers 4.x
+        except ImportError:
+            Conv1D = ()  # type: ignore[assignment]
+
+    def _is_linear(mod) -> bool:
+        return isinstance(mod, (nn.Linear, Conv1D))
+
+    linear_names = [name for name, mod in model.named_modules() if _is_linear(mod)]
     matched = [n for n in linear_names if n.split(".")[-1] in _KNOWN_LINEAR_SUFFIXES]
     if matched:
         return matched

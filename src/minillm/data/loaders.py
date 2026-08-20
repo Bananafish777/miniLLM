@@ -15,9 +15,7 @@ tokenizer stage consumes uniformly.
 from __future__ import annotations
 
 import json
-import random
 from pathlib import Path
-from typing import Any
 
 from datasets import Dataset
 
@@ -62,7 +60,6 @@ _SYNTHETIC_RESPONSES = [
 
 def load_synthetic(n: int, seed: int = 42) -> Dataset:
     """Generate ``n`` deterministic instruction-following samples."""
-    rng = random.Random(seed)
     samples: list[dict[str, str]] = []
     for i in range(n):
         instruction = _SYNTHETIC_INSTRUCTIONS[i % len(_SYNTHETIC_INSTRUCTIONS)]

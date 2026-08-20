@@ -9,6 +9,7 @@ dist/
 # Virtualenv
 .venv/
 venv/
+.uv-cache/
 
 # Runtime artifacts
 runs/

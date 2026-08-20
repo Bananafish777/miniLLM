@@ -1,0 +1,49 @@
+# CPU smoke test: scratch tiny GPT-2 + 合成数据，完全离线（无网络、无 GPU）
+# 用法: make smoke  或  python -m minillm.cli train --config configs/train/smoke_scratch.yaml
+experiment_name: smoke-scratch
+finetune_mode: lora
+
+data:
+  format: synthetic
+  synthetic_n: 32
+  val_size: 0.1
+  max_seq_len: 128
+
+model:
+  name_or_path: scratch
+  source: scratch                # 从零构建 2 层 GPT-2（随机权重）+ 训练微型 BPE tokenizer
+  dtype: fp32
+
+lora:
+  r: 8
+  alpha: 16
+  dropout: 0.05
+  target_modules: null           # 自动探测 -> c_attn/c_proj/c_fc
+
+train:
+  output_dir: runs/smoke-scratch
+  seed: 42
+  num_train_epochs: 1
+  max_steps: 3                   # 只跑 3 步，验证全链路
+  per_device_train_batch_size: 2
+  per_device_eval_batch_size: 2
+  gradient_accumulation_steps: 1
+  learning_rate: 2.0e-4
+  lr_scheduler_type: cosine
+  warmup_ratio: 0.03
+  logging_steps: 1
+  eval_strategy: steps
+  eval_steps: 2
+  save_steps: 3
+  save_total_limit: 1
+  gradient_checkpointing: false
+
+eval:
+  num_samples: 2
+  max_new_tokens: 16
+  do_sample: false
+
+export:
+  merge_adapter: true
+  quantize: none
+  register_mlflow: false

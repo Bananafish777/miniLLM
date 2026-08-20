@@ -1,0 +1,51 @@
+# Hub-path smoke test: 真实加载流程（HF 官方被墙时自动走 hf-mirror.com）
+# 用法: HF_ENDPOINT=https://hf-mirror.com python -m minillm.cli train --config configs/train/smoke_hub.yaml
+experiment_name: smoke-hub
+finetune_mode: lora
+
+data:
+  format: synthetic
+  synthetic_n: 16
+  val_size: 0.1
+  max_seq_len: 256
+
+model:
+  name_or_path: hf-internal-testing/tiny-random-LlamaForCausalLM
+  tokenizer_name: hf-internal-testing/llama-tokenizer
+  source: hub
+  dtype: fp32
+  attn_impl: eager              # tiny 模型无 sdpa 兼容性问题，但 eager 最稳
+
+lora:
+  r: 4
+  alpha: 8
+  dropout: 0.05
+  target_modules: null
+
+train:
+  output_dir: runs/smoke-hub
+  seed: 42
+  num_train_epochs: 1
+  max_steps: 2
+  per_device_train_batch_size: 2
+  per_device_eval_batch_size: 2
+  gradient_accumulation_steps: 1
+  learning_rate: 2.0e-4
+  lr_scheduler_type: cosine
+  warmup_ratio: 0.03
+  logging_steps: 1
+  eval_strategy: steps
+  eval_steps: 2
+  save_steps: 2
+  save_total_limit: 1
+  gradient_checkpointing: false
+
+eval:
+  num_samples: 1
+  max_new_tokens: 8
+  do_sample: false
+
+export:
+  merge_adapter: true
+  quantize: none
+  register_mlflow: false

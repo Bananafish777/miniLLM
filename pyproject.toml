@@ -1,0 +1,59 @@
+[project]
+name = "minillm"
+version = "0.1.0"
+description = "End-to-end LLM infrastructure platform: finetuning, vLLM/SGLang serving, benchmarking, deployment & monitoring"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+dependencies = [
+    "torch>=2.2",
+    "transformers>=4.44",
+    "peft>=0.12",
+    "datasets>=2.20",
+    "accelerate>=0.34",
+    "tokenizers>=0.19",
+    "pydantic>=2.7",
+    "pydantic-settings>=2.3",
+    "PyYAML>=6.0",
+    "tqdm>=4.66",
+    "sentencepiece>=0.2.0",
+    "tiktoken>=0.7.0",
+    "numpy>=1.26",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.5",
+]
+gpu = [
+    "bitsandbytes>=0.43",   # QLoRA 4-bit 量化底座（仅 Linux+CUDA）
+]
+mlflow = [
+    "mlflow>=2.14",         # 实验追踪与模型注册（自托管）
+]
+
+[project.scripts]
+minillm = "minillm.cli:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "smoke: fast offline smoke tests (scratch tiny model, no network)",
+    "hub: tests requiring HuggingFace hub access (set HF_ENDPOINT=https://hf-mirror.com if blocked)",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B"]
+ignore = ["E501"]

@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# Virtualenv
+.venv/
+venv/
+
+# Runtime artifacts
+runs/
+data/raw/
+data/cache/
+data/datasets/
+*.log
+metrics.json
+
+# Environment / secrets
+.env
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+
+# MLflow
+mlruns/
+mlartifacts/
+
+# Test / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Docker
+deploy/docker/tmp/

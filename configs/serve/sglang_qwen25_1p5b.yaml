@@ -1,0 +1,18 @@
+# SGLang OpenAI 兼容推理服务（NVIDIA GPU 目标环境）— Benchmark 对照组
+# 用法（GPU 机器）: minillm serve --config configs/serve/sglang_qwen25_1p5b.yaml
+engine: sglang
+serve_name: minillm-sglang
+host: 0.0.0.0
+port: 30000
+
+model:
+  name_or_path: runs/qwen25-1.5b-lora/export
+  dtype: auto
+  max_model_len: 8192
+
+# --- SGLang 性能关键旋钮 ---
+gpu_memory_utilization: 0.85      # mem-fraction-static
+tensor_parallel_size: 1           # --tp N
+
+default_temperature: 0.7
+default_max_tokens: 512

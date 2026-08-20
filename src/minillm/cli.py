@@ -3,8 +3,8 @@
 Usage::
 
     minillm train --config configs/train/lora_qwen25_1p5b.yaml [--override key=value ...]
-    minillm serve --config configs/serve/vllm_qwen25_1p5b.yaml     # M2
-    minillm bench --config configs/bench/matrix.yaml               # M3
+    minillm serve --config configs/serve/hf_qwen25_1p5b.yaml  [--override key=value ...]
+    minillm bench --config configs/bench/matrix.yaml          # M3
 """
 
 from __future__ import annotations
@@ -14,6 +14,8 @@ import sys
 
 from minillm.common.logging import setup_logging
 from minillm.common.utils import load_model_config
+from minillm.serve.config import ServeConfig
+from minillm.serve.launch import serve
 from minillm.train.config import TrainRunConfig
 from minillm.train.trainer import run_train
 
@@ -28,6 +30,11 @@ def _cmd_train(args: argparse.Namespace) -> int:
     cfg = load_model_config(TrainRunConfig, args.config, args.override)
     run_train(cfg)  # type: ignore[arg-type]
     return 0
+
+
+def _cmd_serve(args: argparse.Namespace) -> int:
+    cfg = load_model_config(ServeConfig, args.config, args.override)
+    return serve(cfg)  # type: ignore[arg-type]
 
 
 def _cmd_not_ready(name: str, milestone: str) -> int:
@@ -56,7 +63,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "train":
         return _cmd_train(args)
     if args.command == "serve":
-        return _cmd_not_ready("serve", "milestone M2 (vLLM/SGLang)")
+        return _cmd_serve(args)
     return _cmd_not_ready("bench", "milestone M3 (Benchmark)")
 
     # unreachable

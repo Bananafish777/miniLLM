@@ -7,7 +7,7 @@
 | 模块 | 技术栈 | 说明 |
 | --- | --- | --- |
 | 🎓 微调流水线 | PyTorch · Transformers · PEFT · MLflow | LoRA / QLoRA / 全参三条路径，适配 1B~3B 模型，产物自动导出注册 |
-| ⚡ 推理服务 | **vLLM**（主）· SGLang（对比） | OpenAI API 兼容；Paged Attention · Continuous Batching · KV Cache 高并发优化（M2） |
+| ⚡ 推理服务 | **vLLM**（主）· SGLang（对比）· Transformers（本地） | OpenAI API 兼容；Paged Attention · Continuous Batching · KV Cache 高并发优化；多引擎统一 EngineClient 抽象 |
 | 📊 Benchmark 系统 | 自研 asyncio 压测客户端 | 对比 Transformers / vLLM / SGLang 的**吞吐、TTFT、ITL、显存占用**，内置瓶颈分析（M3） |
 | 🚀 部署调度 | Docker · docker-compose · Kubernetes · Helm · Kueue | 开发/演示与生产双轨编排，GPU 队列调度 + 弹性伸缩（M4/M5） |
 | 📈 可观测性 | Prometheus · Grafana · DCGM Exporter | GPU 利用率/显存/温度 + 服务吞吐/延迟分位数大盘（M4/M6） |
@@ -30,6 +30,7 @@
 
 - [架构设计与技术选型](docs/architecture.md)（M0，已定稿）
 - [微调流水线使用说明](docs/finetuning.md)（M1）
+- [推理服务使用说明](docs/serving.md)（M2）
 - Benchmark 方法论（M3 补全）· 部署手册（M4/M5 补全）
 
 ## 开发路线图
@@ -38,8 +39,8 @@
 | --- | --- | --- |
 | M0 | 架构与技术选型 | ✅ 完成 |
 | M1 | 微调流水线（LoRA/QLoRA/全参 + 导出 + MLflow） | ✅ 完成 |
-| M2 | vLLM OpenAI 兼容推理服务 | ⏳ 下一步 |
-| M3 | Benchmark 系统（三引擎对比 + 瓶颈分析） | 待开始 |
+| M2 | 推理服务（OpenAI 兼容 + 多引擎抽象 + 指标） | ✅ 完成 |
+| M3 | Benchmark 系统（三引擎对比 + 瓶颈分析） | ⏳ 下一步 |
 | M4 | docker-compose 全栈编排 | 待开始 |
 | M5 | Kubernetes + Helm + Kueue 调度 | 待开始 |
 | M6 | 监控完善（告警 + Benchmark 结果入库） | 待开始 |
@@ -59,15 +60,19 @@ make test               # 离线单元测试（无需网络/GPU）
 make smoke              # CPU 冒烟：scratch 微型 GPT-2 + LoRA 全链路
 make smoke-hub          # hub 路径冒烟（自动走 hf-mirror 镜像）
 
-# 微调（M1 已可用）
-make train CONFIG=configs/train/smoke_scratch.yaml              # 离线冒烟
+# 微调（M1）
 make train CONFIG=configs/train/lora_qwen25_1p5b.yaml           # LoRA 微调 Qwen2.5-1.5B
 make train CONFIG=configs/train/qlora_qwen25_3b.yaml            # QLoRA 微调 Qwen2.5-3B（GPU）
 make train CONFIG=configs/train/full_qwen25_1p5b.yaml           # 全参微调（GPU）
 
+# 推理服务（M2）
+make serve CONFIG=configs/serve/hf_tiny.yaml                    # 本地 OpenAI 兼容服务（Mac 可跑）
+make serve CONFIG=configs/serve/vllm_qwen25_1p5b.yaml           # vLLM（GPU 环境）
+# 验证: curl http://127.0.0.1:8000/v1/models
+
 # 微调产物（runs/<run>/）
 #   adapter/      LoRA adapter
-#   export/       合并后的完整模型（M2 可直接被 vLLM 加载）
+#   export/       合并后的完整模型（可直接被 vLLM 加载）
 #   metrics.json  训练摘要（供监控采集）
 #   eval_samples.json  生成质量样例
 ```

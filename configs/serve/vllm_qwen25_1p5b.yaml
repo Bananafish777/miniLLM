@@ -1,0 +1,28 @@
+# vLLM OpenAI 兼容推理服务（NVIDIA GPU 目标环境）
+# 核心优化对应关系（题目要求 -> vLLM 机制 -> 本配置字段）：
+#   Paged Attention       -> KV Cache 分页管理        -> gpu_memory_utilization
+#   Continuous Batching   -> 请求级动态调度           -> max_num_seqs / max_num_batched_tokens
+#   KV Cache              -> 显存预算/上下文窗口      -> max_model_len
+#   Prefix Caching        -> 公共前缀 KV 复用         -> enable_prefix_caching
+# 用法（GPU 机器）: minillm serve --config configs/serve/vllm_qwen25_1p5b.yaml
+#   或直接: docker run --gpus all --shm-size 8g -p 8000:8000 vllm/vllm-openai:latest \
+#           serve runs/qwen25-1.5b-lora/export --gpu-memory-utilization 0.85 ...
+engine: vllm
+serve_name: minillm-vllm
+host: 0.0.0.0
+port: 8000
+
+model:
+  name_or_path: runs/qwen25-1.5b-lora/export    # M1 微调产物（合并后）
+  dtype: auto                                   # vLLM 内部处理 bf16
+  max_model_len: 8192
+
+# --- vLLM 性能关键旋钮 ---
+gpu_memory_utilization: 0.85      # 85% 显存给模型权重 + KV Cache
+tensor_parallel_size: 1           # 多卡时设为 2/4/8
+enable_prefix_caching: true       # 多轮对话/共享系统提示词场景收益明显
+max_num_seqs: 256                 # 并发批处理上限（Continuous Batching 深度）
+max_num_batched_tokens: 8192      # prefill 阶段单批 token 上限
+
+default_temperature: 0.7
+default_max_tokens: 512

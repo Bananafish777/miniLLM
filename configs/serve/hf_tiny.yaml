@@ -1,0 +1,17 @@
+# 本地 OpenAI 兼容推理服务（Transformers 后端，Mac/CPU/MPS 可跑）
+# 用法: minillm serve --config configs/serve/hf_tiny.yaml
+#   或  curl http://127.0.0.1:8000/v1/models
+experiment: serve-hf-tiny
+engine: hf
+serve_name: minillm-hf
+host: 127.0.0.1
+port: 8000
+
+model:
+  name_or_path: data/models/tiny-random-LlamaForCausalLM   # 冒烟用微型模型
+  dtype: fp32
+  attn_impl: eager
+  max_model_len: 512
+
+default_temperature: 0.7
+default_max_tokens: 64

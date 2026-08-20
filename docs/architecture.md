@@ -420,7 +420,7 @@ miniLLM/
 | 里程碑 | 内容 | 验收标准 |
 | --- | --- | --- |
 | **M0** | 架构与技术选型（本文档） | 架构评审通过 ✅ |
-| **M1** | 微调流水线 | 用 Qwen2.5-1.5B 跑通 LoRA 微调 + 导出 + MLflow 记录（GPU 环境）；Mac 上 CPU smoke test 通过 |
+| **M1** | 微调流水线 | ✅ 完成：LoRA/QLoRA/全参三路径、4 种数据格式、prompt 掩码、评估、adapter 合并导出、MLflow 可选追踪；21 个测试通过（含 scratch 与真实 tiny-Llama hub 路径），CLI `minillm train` 可用 |
 | **M2** | 推理服务 | vLLM 容器起 OpenAI 兼容服务；`/v1/chat/completions` 流式/非流式可用；`/metrics` 可拉取 |
 | **M3** | Benchmark 系统 | 三引擎×多并发矩阵出报告（吞吐/TTFT/显存），瓶颈分析生效 |
 | **M4** | Compose 全栈 | `make up` 一键起训练/推理/监控；Grafana 面板出图 |

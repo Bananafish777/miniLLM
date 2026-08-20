@@ -1,0 +1,28 @@
+# 本地冒烟 Benchmark：HF 进程内引擎（tiny llama，Mac/CPU/MPS 可跑）
+# 用法: minillm bench --config configs/bench/smoke_local.yaml
+experiment: bench-smoke-local
+
+engines:
+  hf:
+    type: hf
+    model: data/models/tiny-random-LlamaForCausalLM
+    dtype: fp32
+    attn_impl: eager
+    max_model_len: 256
+
+matrix:
+  engines: [hf]
+  models: [tiny-llama]
+  concurrency: [1, 2]
+  input_tokens: [32]
+  output_tokens: [16]
+
+sampling:
+  temperature: 0.0
+  top_p: 1.0
+
+run:
+  warmup_requests: 1
+  requests_per_concurrency: 2
+  stream: true
+  timeout_s: 120

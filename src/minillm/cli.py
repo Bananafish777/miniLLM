@@ -12,6 +12,8 @@ from __future__ import annotations
 import argparse
 import sys
 
+from minillm.bench.bench import run_bench
+from minillm.bench.config import BenchRunConfig
 from minillm.common.logging import setup_logging
 from minillm.common.utils import load_model_config
 from minillm.serve.config import ServeConfig
@@ -37,6 +39,12 @@ def _cmd_serve(args: argparse.Namespace) -> int:
     return serve(cfg)  # type: ignore[arg-type]
 
 
+def _cmd_bench(args: argparse.Namespace) -> int:
+    cfg = load_model_config(BenchRunConfig, args.config, args.override)
+    run_bench(cfg)  # type: ignore[arg-type]
+    return 0
+
+
 def _cmd_not_ready(name: str, milestone: str) -> int:
     print(f"[minillm] `{name}` is scheduled for {milestone} — not implemented yet.", file=sys.stderr)
     return 2
@@ -54,7 +62,7 @@ def main(argv: list[str] | None = None) -> int:
     p_serve = sub.add_parser("serve", help="start an OpenAI-compatible inference service (M2)")
     _add_config_arg(p_serve)
 
-    p_bench = sub.add_parser("bench", help="run the benchmark matrix (M3)")
+    p_bench = sub.add_parser("bench", help="run the benchmark matrix (Transformers/vLLM/SGLang)")
     _add_config_arg(p_bench)
 
     args = parser.parse_args(argv)
@@ -64,7 +72,7 @@ def main(argv: list[str] | None = None) -> int:
         return _cmd_train(args)
     if args.command == "serve":
         return _cmd_serve(args)
-    return _cmd_not_ready("bench", "milestone M3 (Benchmark)")
+    return _cmd_bench(args)
 
     # unreachable
     return 0

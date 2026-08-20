@@ -1,0 +1,36 @@
+# 三引擎对比 Benchmark（NVIDIA GPU 目标环境）
+# 前置: vLLM 服务(:8000) 与 SGLang 服务(:30000) 已启动（configs/serve/ 下对应配置）
+# 用法: minillm bench --config configs/bench/matrix_qwen25.yaml
+experiment: bench-qwen25-three-engine
+
+engines:
+  hf:
+    type: hf
+    model: runs/qwen25-1.5b-lora/export
+    dtype: auto
+    max_model_len: 2048
+  vllm:
+    type: vllm
+    base_url: http://127.0.0.1:8000
+    model: runs/qwen25-1.5b-lora/export
+  sglang:
+    type: sglang
+    base_url: http://127.0.0.1:30000
+    model: runs/qwen25-1.5b-lora/export
+
+matrix:
+  engines: [hf, vllm, sglang]
+  models: [qwen25-1.5b]
+  concurrency: [1, 8, 32, 64]        # 并发压力阶梯
+  input_tokens: [128, 2048]          # 短/长输入（prefill 压力）
+  output_tokens: [128, 512]          # 短/长输出（decode 压力）
+
+sampling:
+  temperature: 0.0                   # greedy：三引擎可比口径
+  top_p: 1.0
+
+run:
+  warmup_requests: 3
+  requests_per_concurrency: 10
+  stream: true
+  timeout_s: 600

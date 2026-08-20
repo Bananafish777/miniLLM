@@ -1,0 +1,27 @@
+# HTTP 协议路径冒烟 Benchmark：经 vllm 适配器压测本地 OpenAI 兼容服务
+# 前置: minillm serve --config configs/serve/hf_tiny.yaml （另开终端）
+# 用法: minillm bench --config configs/bench/smoke_http.yaml
+experiment: bench-smoke-http
+
+engines:
+  vllm:                          # 适配器指向本地 HF 服务 —— 验证协议路径并发能力
+    type: vllm
+    base_url: http://127.0.0.1:8000
+    model: data/models/tiny-random-LlamaForCausalLM
+
+matrix:
+  engines: [vllm]
+  models: [tiny-llama]
+  concurrency: [1, 4]
+  input_tokens: [32]
+  output_tokens: [16]
+
+sampling:
+  temperature: 0.0
+  top_p: 1.0
+
+run:
+  warmup_requests: 1
+  requests_per_concurrency: 3
+  stream: true
+  timeout_s: 120

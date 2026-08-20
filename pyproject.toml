@@ -52,6 +52,7 @@ testpaths = ["tests"]
 markers = [
     "smoke: fast offline smoke tests (scratch tiny model, no network)",
     "hub: tests requiring HuggingFace hub access (set HF_ENDPOINT=https://hf-mirror.com if blocked)",
+    "bench: real benchmark runs (slow, excluded from make test)",
 ]
 
 [tool.ruff]

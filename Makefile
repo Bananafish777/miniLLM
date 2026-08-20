@@ -16,7 +16,11 @@ setup:
 
 ## test: run fast offline unit tests
 test:
-	$(PY) -m pytest -m "not hub" -q
+	$(PY) -m pytest -m "not hub and not bench" -q
+
+## bench-test: run the real benchmark pipeline on the local HF engine
+bench-test:
+	$(PY) -m pytest -m bench -q
 
 ## smoke: CPU smoke test with scratch tiny GPT-2 (fully offline)
 smoke:

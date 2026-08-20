@@ -422,7 +422,7 @@ miniLLM/
 | **M0** | 架构与技术选型（本文档） | 架构评审通过 ✅ |
 | **M1** | 微调流水线 | ✅ 完成：LoRA/QLoRA/全参三路径、4 种数据格式、prompt 掩码、评估、adapter 合并导出、MLflow 可选追踪；21 个测试通过（含 scratch 与真实 tiny-Llama hub 路径），CLI `minillm train` 可用 |
 | **M2** | 推理服务 | ✅ 完成：EngineClient 抽象（vLLM/SGLang/Transformers 适配器）、OpenAI 兼容服务器（流式 SSE/非流式、/v1/models、/metrics Prometheus 指标）、vLLM/SGLang 启动命令与 docker 提示、38 个测试通过（含真实 uvicorn 服务 + 双适配器协议集成验证） |
-| **M3** | Benchmark 系统 | 三引擎×多并发矩阵出报告（吞吐/TTFT/显存），瓶颈分析生效 |
+| **M3** | Benchmark 系统 | ✅ 完成：矩阵展开 → asyncio 并发压测（流式 TTFT/ITL 精确计时）→ 双通道 token 交叉验证 → 聚合 + 内置瓶颈分析 → JSON/Markdown 报告；54 个测试通过；本机实测：进程内 HF 73→76 tps（检出并发饱和）、HTTP 协议路径 c=4 达 122 tps（1.8×） |
 | **M4** | Compose 全栈 | `make up` 一键起训练/推理/监控；Grafana 面板出图 |
 | **M5** | K8s + Helm | GPU 节点部署推理服务 + Kueue 队列 + HPA；bench Job 跑通 |
 | **M6** | 监控完善 | 告警规则（显存水位/延迟异常）、Benchmark 结果入库大盘 |

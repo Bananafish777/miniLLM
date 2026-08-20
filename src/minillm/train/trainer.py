@@ -216,6 +216,32 @@ def run_train(cfg: TrainRunConfig) -> dict:
         artifacts=[str(adapter_dir), export["export_dir"]] if mlflow_importable() else [],
     )
     summary["mlflow_logged"] = mlflow_ok
+
+    # 训练指标入库（Pushgateway → Grafana 训练视图）
+    from minillm.monitor.push import push_series
+
+    push_ok = push_series(
+        [
+            {
+                "name": "minillm_train_final_eval_loss",
+                "help": "Final evaluation loss",
+                "value": metrics.get("eval_loss", float("nan")),
+                "labels": {"experiment": cfg.experiment_name, "model": cfg.model.name_or_path,
+                           "mode": cfg.finetune_mode},
+            },
+            {
+                "name": "minillm_train_tokens_per_second",
+                "help": "Training throughput (tokens/s)",
+                "value": metrics.get("train_tokens_per_second", 0.0),
+                "labels": {"experiment": cfg.experiment_name, "model": cfg.model.name_or_path,
+                           "mode": cfg.finetune_mode},
+            },
+        ],
+        job="minillm-train",
+        gateway=cfg.push_gateway,
+        grouping_key={"experiment": cfg.experiment_name, "run": Path(cfg.train.output_dir).name},
+    )
+    summary["pushgateway_logged"] = push_ok
     log.info("=== train finished: %s | eval_loss=%s | export=%s ===",
              cfg.train.output_dir, metrics.get("eval_loss", "n/a"), export["export_dir"])
     return summary

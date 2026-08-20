@@ -93,6 +93,7 @@ services:
     environment:
       <<: *hf-env
       MLFLOW_TRACKING_URI: ${MLFLOW_TRACKING_URI:-http://mlflow:5000}
+      PUSHGATEWAY_URL: http://pushgateway:9091
     depends_on:
       - mlflow
     # GPU 训练时附加 docker-compose.gpu.yml（含 device 声明）
@@ -147,6 +148,13 @@ services:
     profiles: ["gpu"]
     ports:
       - "${DCGM_PORT:-9400}:9400"
+    restart: unless-stopped
+
+  # 批任务指标入口（训练/压测结果经 Pushgateway 入库）
+  pushgateway:
+    image: prom/pushgateway:v1.9.0
+    ports:
+      - "${PUSHGATEWAY_PORT:-9091}:9091"
     restart: unless-stopped
 
 volumes:

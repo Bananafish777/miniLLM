@@ -35,3 +35,9 @@ scrape_configs:
     metrics_path: /metrics
     static_configs:
       - targets: ["dcgm-exporter:9400"]
+
+  # 批任务指标（训练/压测结果，由 Pushgateway 承接）
+  - job_name: pushgateway
+    honor_labels: true
+    static_configs:
+      - targets: ["pushgateway:9091"]

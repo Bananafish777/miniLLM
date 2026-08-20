@@ -86,7 +86,55 @@ make test             # 含 helm 渲染/引用完整性测试
 
 ## M4：docker-compose（开发/演示）
 
-## 架构
+## M6：监控完善（告警 + Benchmark/训练结果入库）
+
+### 数据流
+
+```
+minillm bench ──► Pushgateway(:9091) ──► Prometheus ──► Grafana "Benchmark 对比" 面板
+minillm train ──► Pushgateway(:9091) ──► Prometheus ──► Grafana 训练面板
+（config.push_gateway 或环境变量 MINILLM_PUSHGATEWAY 指定；未配置时自动跳过）
+```
+
+### 入库指标
+
+| 指标 | 标签 | 来源 |
+| --- | --- | --- |
+| `minillm_bench_throughput_tps` | experiment/engine/model/concurrency/input/output | bench |
+| `minillm_bench_ttft_p50/p99_seconds` | 同上 | bench |
+| `minillm_bench_itl_p50_seconds` / `minillm_bench_e2e_p99_seconds` | 同上 | bench |
+| `minillm_bench_success_rate` | 同上 | bench |
+| `minillm_train_final_eval_loss` | experiment/model/mode | train |
+| `minillm_train_tokens_per_second` | experiment/model/mode | train |
+
+### 使用
+
+```bash
+# compose 环境（pushgateway 已内置）：
+docker compose --env-file .env up -d pushgateway prometheus grafana
+minillm bench --config configs/bench/smoke_local.yaml   # 自动推送（读 PUSHGATEWAY_URL）
+
+# 裸机环境：
+export MINILLM_PUSHGATEWAY=http://127.0.0.1:9091
+minillm bench --config configs/bench/matrix_qwen25.yaml
+
+# Grafana: miniLLM Benchmark 对比 面板（实验下拉过滤；吞吐/TTFT/ITL 柱状对比 + 训练曲线）
+```
+
+### 告警规则（6 条，Prometheus 预置）
+
+服务不可达(critical) · GPU 显存 >90%(warn) · GPU 利用率 <5%(warn) · vLLM 排队 >50(warn) · TTFT-p99 >5s(warn) · abort 率 >10%(critical)
+
+### 验证（无 Docker/集群）
+
+```bash
+make deploy-validate   # 校验 pushgateway 服务/采集/面板一致性
+make test              # 含 Pushgateway 推送格式测试（本地捕获服务器）
+```
+
+---
+
+# miniLLM Compose 架构（M4）
 
 ```
                  ┌─────────────┐

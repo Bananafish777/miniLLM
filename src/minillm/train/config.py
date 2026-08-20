@@ -105,6 +105,9 @@ class TrainRunConfig(BaseModel):
     train: TrainArgsConfig
     eval: EvalConfig = Field(default_factory=EvalConfig)
     export: ExportConfig = Field(default_factory=ExportConfig)
+    push_gateway: str | None = Field(
+        default=None, description="Prometheus Pushgateway URL（缺省读 $MINILLM_PUSHGATEWAY）"
+    )
 
     def model_validate_after_defaults(self):
         if self.finetune_mode in ("lora", "qlora") and self.lora is None:

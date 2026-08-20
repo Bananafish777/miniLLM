@@ -1,0 +1,151 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "title": "吞吐对比（tokens/s，按引擎）",
+      "type": "barchart",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 0 },
+      "fieldConfig": {
+        "defaults": { "unit": "reqps" },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "horizontal",
+        "xField": "engine",
+        "showValue": "auto",
+        "legend": { "show": true, "displayMode": "list", "placement": "bottom" }
+      },
+      "targets": [
+        {
+          "expr": "max(minillm_bench_throughput_tps{concurrency=\"8\"}) by (engine, model)",
+          "legendFormat": "{{ engine }} c=8",
+          "refId": "A"
+        },
+        {
+          "expr": "max(minillm_bench_throughput_tps{concurrency=\"32\"}) by (engine, model)",
+          "legendFormat": "{{ engine }} c=32",
+          "refId": "B"
+        }
+      ]
+    },
+    {
+      "title": "TTFT p99 对比（s，按引擎）",
+      "type": "barchart",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 0 },
+      "fieldConfig": {
+        "defaults": { "unit": "s" },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "horizontal",
+        "xField": "engine",
+        "showValue": "auto",
+        "legend": { "show": true, "displayMode": "list", "placement": "bottom" }
+      },
+      "targets": [
+        {
+          "expr": "max(minillm_bench_ttft_p99_seconds) by (engine, model, concurrency)",
+          "legendFormat": "{{ engine }} c={{ concurrency }}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "吞吐 vs 并发（tokens/s）",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 9 },
+      "fieldConfig": { "defaults": { "unit": "reqps" }, "overrides": [] },
+      "targets": [
+        {
+          "expr": "minillm_bench_throughput_tps",
+          "legendFormat": "{{ engine }} in={{ input_tokens }}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "ITL p50 对比（s，按引擎）",
+      "type": "barchart",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 9 },
+      "fieldConfig": {
+        "defaults": { "unit": "s" },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "horizontal",
+        "xField": "engine",
+        "showValue": "auto",
+        "legend": { "show": true, "displayMode": "list", "placement": "bottom" }
+      },
+      "targets": [
+        {
+          "expr": "max(minillm_bench_itl_p50_seconds) by (engine, model, concurrency)",
+          "legendFormat": "{{ engine }} c={{ concurrency }}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "训练：最终 eval loss（按实验）",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 18 },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "targets": [
+        {
+          "expr": "minillm_train_final_eval_loss",
+          "legendFormat": "{{ experiment }} ({{ model }})",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "训练吞吐（tokens/s，按实验）",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 18 },
+      "fieldConfig": { "defaults": { "unit": "reqps" }, "overrides": [] },
+      "targets": [
+        {
+          "expr": "minillm_train_tokens_per_second",
+          "legendFormat": "{{ experiment }} ({{ mode }})",
+          "refId": "A"
+        }
+      ]
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "tags": ["minillm", "benchmark"],
+  "templating": {
+    "list": [
+      {
+        "name": "experiment",
+        "label": "实验",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "query": "label_values(minillm_bench_throughput_tps, experiment)",
+        "current": { "text": "All", "value": "$__all" },
+        "includeAll": true,
+        "multi": false,
+        "allValue": ".*"
+      }
+    ]
+  },
+  "time": { "from": "now-6h", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "miniLLM Benchmark 对比",
+  "uid": "minillm-bench",
+  "version": 1,
+  "weekStart": ""
+}

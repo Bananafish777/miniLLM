@@ -425,7 +425,7 @@ miniLLM/
 | **M3** | Benchmark 系统 | ✅ 完成：矩阵展开 → asyncio 并发压测（流式 TTFT/ITL 精确计时）→ 双通道 token 交叉验证 → 聚合 + 内置瓶颈分析 → JSON/Markdown 报告；54 个测试通过；本机实测：进程内 HF 73→76 tps（检出并发饱和）、HTTP 协议路径 c=4 达 122 tps（1.8×） |
 | **M4** | Compose 全栈 | ✅ 完成：双 compose 文件（base + GPU override）、Profile 门控、训练/推理/MLflow/Prometheus/Grafana/DCGM 八服务、Grafana 面板与 6 条告警规则预置、`make deploy-validate` 静态校验工件（无 Docker 环境可测） |
 | **M5** | K8s + Helm | ✅ 完成：Helm chart（vLLM Deployment/Service/HPA external 指标、SGLang 可选、训练/压测 Job、Kueue ClusterQueue+LocalQueue、ServiceMonitor 可选、PVC 模板）、`helm lint` + 全量渲染验证（12 资源）、配置漂移测试 |
-| **M6** | 监控完善 | 告警规则（显存水位/延迟异常）、Benchmark 结果入库大盘 |
+| **M6** | 监控完善 | ✅ 完成：Benchmark/训练结果经 Pushgateway 入库（6+2 指标、实验分组键防覆盖）、Grafana Benchmark 对比面板（实验下拉过滤）、compose 内置 pushgateway 服务与采集、推送格式测试（本地捕获服务器） |
 | **M7** | 演示闭环 + 文档 | 全链路演示脚本 + README 作品集化（架构图/结果截图/方法论） |
 
 > M1~M3 可在无 GPU 时先以 **CPU 演示模式**开发联调（Transformers 路径完整可测），GPU 专属验证留待目标环境。

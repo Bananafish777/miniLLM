@@ -50,3 +50,6 @@ class BenchRunConfig(BaseModel):
     matrix: MatrixConfig
     sampling: SamplingConfig = Field(default_factory=SamplingConfig)
     run: RunConfig = Field(default_factory=RunConfig)
+    push_gateway: str | None = Field(
+        default=None, description="Prometheus Pushgateway URL（缺省读 $MINILLM_PUSHGATEWAY）"
+    )

@@ -63,11 +63,14 @@ def main() -> int:
     prom = yaml.safe_load((MONITORING / "prometheus/prometheus.yml").read_text(encoding="utf-8"))
     jobs = [j["job_name"] for j in prom.get("scrape_configs", [])]
     check(len(jobs) == len(set(jobs)), "scrape job 无重名")
-    for target_svc in ["vllm", "sglang", "serve-hf", "dcgm-exporter"]:
+    for target_svc in ["vllm", "sglang", "serve-hf", "dcgm-exporter", "pushgateway"]:
         check(
             any(target_svc in str(j.get("static_configs")) for j in prom.get("scrape_configs", [])),
             f"scrape 目标包含 {target_svc}",
         )
+    check("pushgateway" in base["services"], "compose 含 pushgateway 服务")
+    check("PUSHGATEWAY_URL" in yaml.dump(base["services"]["train"].get("environment", {})),
+          "train 容器注入 PUSHGATEWAY_URL")
     rules = yaml.safe_load((MONITORING / "prometheus/rules/minillm-alerts.yml").read_text(encoding="utf-8"))
     n_rules = sum(len(g["rules"]) for g in rules.get("groups", []))
     check(n_rules >= 4, f"告警规则 >= 4 条（实际 {n_rules}）")
@@ -82,6 +85,11 @@ def main() -> int:
     check(dash["title"] == "miniLLM 全栈监控", "面板 JSON 可解析")
     exprs = [t["expr"] for p in dash["panels"] for t in p["targets"]]
     check(all("DCGM_FI_DEV" in e or "vllm:" in e or "minillm_" in e for e in exprs), "面板表达式均为真实指标")
+
+    bench_dash = json.loads((MONITORING / "grafana/dashboards/minillm-bench.json").read_text(encoding="utf-8"))
+    bench_exprs = [t["expr"] for p in bench_dash["panels"] for t in p["targets"]]
+    check(bench_dash["title"] == "miniLLM Benchmark 对比", "Benchmark 面板 JSON 可解析")
+    check(all("minillm_bench_" in e or "minillm_train_" in e for e in bench_exprs), "Benchmark 面板引用已入库指标")
 
     check((ROOT / "deploy/compose/.env.example").exists(), ".env.example 存在")
     check((ROOT / "deploy/docker/Dockerfile.train").exists(), "Dockerfile.train 存在")

@@ -10,9 +10,10 @@ from pathlib import Path
 from minillm.bench.cases import expand_cases
 from minillm.bench.client import make_client
 from minillm.bench.config import BenchRunConfig
-from minillm.bench.metrics import bottleneck_analysis
+from minillm.bench.metrics import aggregate, bottleneck_analysis
 from minillm.bench.report import print_console, write_report
 from minillm.bench.runner import CaseResult, run_case
+from minillm.monitor.bench_series import push_bench_metrics
 
 log = logging.getLogger(__name__)
 
@@ -37,6 +38,13 @@ def run_bench(cfg: BenchRunConfig) -> dict:
 
     output_dir = cfg.output_dir or f"runs/bench/{cfg.experiment}-{time.strftime('%Y%m%d-%H%M%S')}"
     paths = write_report(cfg, results, findings, output_dir)
+
+    # Benchmark 结果入库（Pushgateway → Grafana 对比面板）
+    push_bench_metrics(
+        [aggregate(r) for r in results],
+        experiment=cfg.experiment,
+        gateway=cfg.push_gateway,
+    )
 
     print_console(results)
     log.info("report written: %s", paths["json"])

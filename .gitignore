@@ -44,3 +44,7 @@ htmlcov/
 # Docker
 deploy/docker/tmp/
 .venv-vllm-metal/
+
+# 大模型权重（测试 fixture 除外，不入库）
+data/models/Qwen3-0.6B/
+data/models/Qwen3-0.6B-4bit/

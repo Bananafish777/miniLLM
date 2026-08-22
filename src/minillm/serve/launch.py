@@ -40,17 +40,35 @@ def build_client(cfg: ServeConfig):
 
 
 def vllm_command(cfg: ServeConfig) -> list[str]:
-    """The ``vllm serve`` command equivalent of this config (also used in docs/docker)."""
-    return [
-        "vllm", "serve", cfg.model.name_or_path,
+    """The ``vllm serve`` command equivalent of this config (also used in docs/docker).
+
+    ``engine_python`` 指定独立 venv 的解释器时，vllm 可执行文件取同目录下的 ``vllm``
+    （如 .venv-vllm-metal/bin/python → .venv-vllm-metal/bin/vllm）。
+    ``vllm_use_mlx``（Apple Silicon / vllm-metal 插件）时省略 ``--gpu-memory-utilization``
+    （Metal 无显存管理概念，该参数不受支持）。
+    """
+    vllm_bin = "vllm"
+    if cfg.engine_python:
+        from pathlib import Path
+
+        vllm_bin = str(Path(cfg.engine_python).parent / "vllm")
+    cmd = [
+        vllm_bin, "serve", cfg.model.name_or_path,
         "--host", cfg.host, "--port", str(cfg.port),
         "--max-model-len", str(cfg.model.max_model_len),
-        "--gpu-memory-utilization", str(cfg.gpu_memory_utilization),
-        "--tensor-parallel-size", str(cfg.tensor_parallel_size),
+    ]
+    if not cfg.vllm_use_mlx:
+        cmd += [
+            "--gpu-memory-utilization", str(cfg.gpu_memory_utilization),
+            "--tensor-parallel-size", str(cfg.tensor_parallel_size),
+        ]
+    cmd += [
         "--max-num-seqs", str(cfg.max_num_seqs),
         "--max-num-batched-tokens", str(cfg.max_num_batched_tokens),
-        *(["--enable-prefix-caching"] if cfg.enable_prefix_caching else []),
     ]
+    if cfg.enable_prefix_caching:
+        cmd.append("--enable-prefix-caching")
+    return cmd
 
 
 def sglang_command(cfg: ServeConfig) -> list[str]:
@@ -106,12 +124,15 @@ def serve(cfg: ServeConfig) -> int:
 
     if cfg.engine == "vllm":
         cmd = vllm_command(cfg)
-        if shutil.which("vllm"):
+        vllm_bin = cmd[0]
+        from pathlib import Path
+
+        if shutil.which("vllm") or (cfg.engine_python and Path(vllm_bin).exists()):
             log.info("launching vLLM: %s", " ".join(cmd))
             import subprocess
 
             return subprocess.call(cmd)
-        log.warning("vLLM CLI not found (CUDA environment required). Run instead:\n  %s", docker_hint(cfg))
+        log.warning("vLLM CLI not found (CUDA or vllm-metal environment required). Run instead:\n  %s", docker_hint(cfg))
         return 2
 
     if cfg.engine == "sglang":

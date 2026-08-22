@@ -6,12 +6,52 @@
 | --- | --- | --- | --- |
 | `hf` | Transformers（进程内） | Mac / CPU / GPU | 本地开发、无优化基线、协议演示 |
 | `vllm` | vLLM（外部服务/容器） | NVIDIA GPU | 主推理引擎：Paged Attention / Continuous Batching / KV Cache |
+| `vllm`（MLX） | vLLM + vllm-metal 插件 | **Apple Silicon** | vLLM 在 Mac 上（见下节） |
 | `sglang` | SGLang（外部服务/容器） | NVIDIA GPU | Benchmark 对照组 |
 | `sglang`（MLX） | SGLang MLX runtime | **Apple Silicon** | Mac 上的高性能推理（见下节） |
 
+## Mac (Apple Silicon) 上跑 vLLM — vllm-metal 插件
+
+> 2026 年 vLLM 官方发布了 macOS wheel（v0.26.0 起），配合社区 [vllm-metal](https://github.com/vllm-project/vllm-metal) 插件的 MLX 后端，**vLLM 现已可在 Mac 上运行**（此前仅 SGLang 可行）。
+
+### 安装（独立 venv）
+
+```bash
+# ① 下载两个 wheel（GitHub releases；网络受限时可用 gh-proxy.com 加速）：
+#    vllm:     https://github.com/vllm-project/vllm/releases/download/v0.27.1/vllm-0.27.1%2Bcpu-cp312-cp312-macosx_11_0_arm64.whl
+#    vllm-metal: https://github.com/vllm-project/vllm-metal/releases/latest  （vllm_metal-*-macosx_15_0_arm64.whl）
+#    放入 .tools/wheels/
+
+# ② 建 venv + 装 vllm 主 wheel（自动解析依赖）
+uv venv --python 3.12 .venv-vllm-metal
+uv pip install --python .venv-vllm-metal ".tools/wheels/vllm-0.27.1+cpu-*.whl"
+
+# ③ 装 vllm-metal 的 PyPI 依赖（mlx-lm 用 PyPI 版替代 wheel 里的 git 引用），再 --no-deps 装插件
+uv pip install --python .venv-vllm-metal "mlx==0.32.0" mlx-lm "mlx-vlm>=0.6.2,<0.7.0" \
+    "llguidance>=1.7.0,<1.8.0" "apache-tvm-ffi>=0.1.9,<0.1.13" "nanobind==2.10.2"
+uv pip install --python .venv-vllm-metal --no-deps ".tools/wheels/vllm_metal-*.whl"
+
+# ④ 模型：scripts/fetch_model.sh mlx-community/Qwen3-0.6B-4bit
+```
+
+### 启动
+
+```bash
+minillm serve --config configs/serve/vllm_mac.yaml   # → http://127.0.0.1:8010
+curl http://127.0.0.1:8010/v1/chat/completions \
+  -H 'Content-Type: application/json' \
+  -d '{"model":"data/models/Qwen3-0.6B-4bit","messages":[{"role":"user","content":"你好"}],"max_tokens":64}'
+```
+
+### 说明
+
+- `vllm_mac.yaml` 关键字段：`vllm_use_mlx: true`（省略 CUDA-only 参数）、
+  `engine_python: .venv-vllm-metal/bin/python`（vllm 命令取同目录 `bin/vllm`）
+- 已验证：本机 M4 Pro 跑 Qwen3-0.6B-4bit，33s 就绪、中文生成正常、`VLLMAdapter` 全接口（models/completions/stream/metrics）通过
+
 ## Mac (Apple Silicon) 上跑 SGLang — MLX runtime
 
-> SGLang 官方已支持 Apple Metal（通过 MLX runtime，`SGLANG_USE_MLX=1`）；vLLM 官方暂不支持 Mac（社区 PR 进行中）。
+> SGLang 官方已支持 Apple Metal（通过 MLX runtime，`SGLANG_USE_MLX=1`），源码分支安装（PyPI 发布版暂未含 srt_mps extra）。
 
 ### 安装（独立 venv，避免污染项目环境）
 

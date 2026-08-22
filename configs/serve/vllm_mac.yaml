@@ -1,0 +1,22 @@
+# vLLM on Apple Silicon（vllm-metal 插件，MLX 后端）— vLLM 在 Mac 上的官方正解
+# 前置: 独立 venv .venv-vllm-metal（装 vllm macOS wheel + vllm-metal 插件，见 docs/serving.md）
+# 用法: minillm serve --config configs/serve/vllm_mac.yaml
+engine: vllm
+serve_name: minillm-vllm-mlx
+host: 127.0.0.1
+port: 8010                       # 与 hf 服务(8000)错开
+
+model:
+  name_or_path: data/models/Qwen3-0.6B-4bit   # mlx-community 预量化 4bit（fetch_model.sh 拉取）
+  dtype: auto
+  max_model_len: 8192
+
+vllm_use_mlx: true               # Metal 后端：省略 CUDA-only 参数
+engine_python: .venv-vllm-metal/bin/python    # vllm-metal venv（vllm 命令取同目录 bin/vllm）
+
+max_num_seqs: 256                # Continuous Batching 并发上限
+max_num_batched_tokens: 8192
+enable_prefix_caching: true      # 前缀 KV 复用
+
+default_temperature: 0.7
+default_max_tokens: 512

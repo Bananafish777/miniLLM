@@ -43,3 +43,4 @@ htmlcov/
 
 # Docker
 deploy/docker/tmp/
+.venv-vllm-metal/

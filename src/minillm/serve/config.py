@@ -43,6 +43,12 @@ class ServeConfig(BaseModel):
                     "launches with SGLANG_USE_MLX=1 and --disable-cuda-graph",
     )
     sglang_metrics: bool = Field(default=True, description="SGLang: expose Prometheus /metrics")
+    vllm_use_mlx: bool = Field(
+        default=False,
+        description="vLLM on Apple Silicon via vllm-metal plugin (MLX backend). "
+                    "Omits CUDA-only flags (--gpu-memory-utilization/--tensor-parallel-size); "
+                    "requires engine_python pointing at the vllm-metal venv",
+    )
     engine_python: str | None = Field(
         default=None,
         description="Python interpreter for the engine (e.g. .venv-sglang/bin/python when sglang "

@@ -43,7 +43,7 @@ def test_sglang_mac_config_loads():
     cfg = load_model_config(ServeConfig, "configs/serve/sglang_mac.yaml")
     assert cfg.sglang_use_mlx is True
     assert cfg.engine_python == ".venv-sglang/bin/python"
-    assert cfg.model.name_or_path == "data/models/Qwen3-0.6B-4bit"
+    assert cfg.model.name_or_path == "data/models/Qwen3-0.6B"
     cmd = sglang_command(cfg)  # type: ignore[arg-type]
     assert "--disable-cuda-graph" in cmd
 

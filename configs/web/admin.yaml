@@ -1,21 +1,27 @@
 # Web 管理控制台 — 引擎状态 / GPU 指标 / Benchmark 结果 / 微调运行
 # 用法: minillm web --config configs/web/admin.yaml
 #   打开 http://127.0.0.1:8080
+#
+# ⚠️ 端口必须与你实际启动的服务一致（各 serve 配置的 port 字段）：
+#   hf      ->  configs/serve/hf_tiny.yaml          (port: 8000)
+#   sglang  ->  configs/serve/sglang_mac.yaml       (port: 30000, Apple Silicon)
+#   vllm    ->  configs/serve/vllm_qwen25_1p5b.yaml (port: 8000, GPU 环境——与 hf 冲突时错开端口)
 serve_name: minillm-admin
 host: 127.0.0.1
 port: 8080
 
 # 要监控的推理引擎（/metrics + /v1/models）
 engines:
-  - name: vllm-main
-    type: vllm
+  - name: hf-local              # 本地 Transformers 服务（Mac 演示主场景）
+    type: hf
     base_url: http://127.0.0.1:8000
-  - name: sglang-bench
+  - name: sglang-bench          # SGLang（Apple Silicon MLX 或 GPU 环境）
     type: sglang
     base_url: http://127.0.0.1:30000
-  - name: hf-local
-    type: hf
-    base_url: http://127.0.0.1:8001
+  # GPU 环境启用 vLLM 时，把 hf 服务的端口错开（如 --override port=8001）再添加：
+  # - name: vllm-main
+  #   type: vllm
+  #   base_url: http://127.0.0.1:8000
 
 bench_dir: runs/bench        # Benchmark 报告目录
 train_dir: runs              # 微调运行目录

@@ -144,4 +144,129 @@ async function boot() {
   await Promise.all([refreshStatus(), loadBench(), loadTrain()]);
   setInterval(refreshStatus, refreshInterval);
 }
+
+/* ======================= 对话 tab ======================= */
+
+const chat = {
+  history: [],
+  controller: null,
+  streaming: false,
+};
+
+function switchTab(name) {
+  document.querySelectorAll(".tab").forEach((t) => t.classList.toggle("active", t.dataset.tab === name));
+  $("tab-monitor").hidden = name !== "monitor";
+  $("tab-chat").hidden = name !== "chat";
+  if (name === "chat") loadChatEngines();
+}
+document.querySelectorAll(".tab").forEach((t) =>
+  t.addEventListener("click", () => switchTab(t.dataset.tab)));
+
+async function loadChatEngines() {
+  try {
+    const resp = await fetch("/api/engines");
+    const engines = await resp.json();
+    $("chat-engine").innerHTML = engines.length
+      ? engines.map((e) => `<option value="${esc(e.name)}">${esc(e.name)} (${esc(e.type)})</option>`).join("")
+      : '<option value="">无可用引擎</option>';
+  } catch { /* 忽略 */ }
+}
+
+function appendBubble(role, text) {
+  const win = $("chat-window");
+  win.querySelector(".chat-hint")?.remove();
+  const div = document.createElement("div");
+  div.className = `bubble ${role}`;
+  div.textContent = text;
+  win.appendChild(div);
+  win.scrollTop = win.scrollHeight;
+  return div;
+}
+
+async function sendChat() {
+  const input = $("chat-input");
+  const text = input.value.trim();
+  const engine = $("chat-engine").value;
+  if (!text || chat.streaming) return;
+  if (!engine) { appendBubble("system", "请先在顶部选择一个引擎"); return; }
+
+  chat.history.push({ role: "user", content: text });
+  input.value = "";
+  appendBubble("user", text);
+
+  const assistant = appendBubble("assistant", "");
+  chat.streaming = true;
+  chat.controller = new AbortController();
+  $("chat-send").disabled = true;
+  $("chat-stop").disabled = false;
+
+  try {
+    const resp = await fetch("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        engine,
+        messages: chat.history,
+        max_tokens: Number($("chat-max-tokens").value) || 256,
+        temperature: Number($("chat-temperature").value) ?? 0.7,
+        stream: true,
+      }),
+      signal: chat.controller.signal,
+    });
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      throw new Error(err.detail || err.error?.message || `HTTP ${resp.status}`);
+    }
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let buf = "";
+    let reply = "";
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      const lines = buf.split("\n");
+      buf = lines.pop(); // 保留可能不完整的最后一行
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed.startsWith("data:")) continue;
+        const payload = trimmed.slice(5).trim();
+        if (payload === "[DONE]") continue;
+        try {
+          const data = JSON.parse(payload);
+          if (data.error) throw new Error(data.error.message || "引擎返回错误");
+          const piece = data.choices?.[0]?.delta?.content || "";
+          if (piece) {
+            reply += piece;
+            assistant.textContent = reply;
+            $("chat-window").scrollTop = $("chat-window").scrollHeight;
+          }
+        } catch (e) {
+          if (!(e instanceof SyntaxError)) throw e;
+        }
+      }
+    }
+    chat.history.push({ role: "assistant", content: reply });
+  } catch (err) {
+    if (err.name !== "AbortError") {
+      assistant.textContent = "⚠ 出错了：" + err.message;
+    }
+  } finally {
+    chat.streaming = false;
+    chat.controller = null;
+    $("chat-send").disabled = false;
+    $("chat-stop").disabled = true;
+  }
+}
+
+$("chat-send").addEventListener("click", sendChat);
+$("chat-stop").addEventListener("click", () => chat.controller?.abort());
+$("chat-clear").addEventListener("click", () => {
+  chat.history = [];
+  $("chat-window").innerHTML = '<div class="chat-hint">对话已清空。</div>';
+});
+$("chat-input").addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendChat(); }
+});
+
 boot();

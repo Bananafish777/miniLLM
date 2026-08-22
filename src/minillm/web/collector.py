@@ -50,8 +50,12 @@ async def _one_engine(engine, timeout: float) -> dict[str, Any]:
                 pass
         entry["up"] = True
         entry["metrics"] = metrics
-        # tokens/s 速率（相邻两次抓取差值）
-        tokens_total = metrics.get("minillm_tokens_generated_total", 0.0)
+        # tokens/s 速率（相邻两次抓取差值）；兼容三种引擎的 token 计数指标名
+        tokens_total = next(
+            (metrics[k] for k in ("minillm_tokens_generated_total", "vllm:generation_tokens_total",
+                                  "sglang:generation_tokens_total") if k in metrics),
+            0.0,
+        )
         now = time.monotonic()
         prev = _snapshots.get(engine.name)
         if prev is not None and tokens_total >= prev[1]:

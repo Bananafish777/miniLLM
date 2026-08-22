@@ -15,32 +15,63 @@
         <div class="sub" id="serve-name">loading…</div>
       </div>
     </div>
+    <nav class="tabs">
+      <button class="tab active" data-tab="monitor">监控</button>
+      <button class="tab" data-tab="chat">对话</button>
+    </nav>
     <div class="status-pill" id="refresh-pill">● 连接中</div>
   </header>
 
   <main>
-    <!-- 引擎状态 -->
-    <section>
-      <h2>推理引擎状态 <button class="ghost" id="btn-refresh">刷新</button></h2>
-      <div class="card-grid" id="engine-cards"><!-- JS 渲染 --></div>
+    <!-- ======================= 监控 tab ======================= -->
+    <section id="tab-monitor">
+      <!-- 引擎状态 -->
+      <section>
+        <h2>推理引擎状态 <button class="ghost" id="btn-refresh">刷新</button></h2>
+        <div class="card-grid" id="engine-cards"><!-- JS 渲染 --></div>
+      </section>
+
+      <!-- GPU（可选：prometheus_url 配置后启用） -->
+      <section id="gpu-section" hidden>
+        <h2>GPU 硬件指标 <span class="hint">（经 Prometheus）</span></h2>
+        <div class="card-grid" id="gpu-cards"></div>
+      </section>
+
+      <!-- Benchmark -->
+      <section>
+        <h2>Benchmark 结果 <span class="hint">runs/bench/*/bench_report.json</span></h2>
+        <div id="bench-list"><div class="empty">暂无数据</div></div>
+      </section>
+
+      <!-- 训练 -->
+      <section>
+        <h2>微调运行 <span class="hint">runs/*/metrics.json</span></h2>
+        <div id="train-list"><div class="empty">暂无数据</div></div>
+      </section>
     </section>
 
-    <!-- GPU（可选：prometheus_url 配置后启用） -->
-    <section id="gpu-section" hidden>
-      <h2>GPU 硬件指标 <span class="hint">（经 Prometheus）</span></h2>
-      <div class="card-grid" id="gpu-cards"></div>
-    </section>
-
-    <!-- Benchmark -->
-    <section>
-      <h2>Benchmark 结果 <span class="hint">runs/bench/*/bench_report.json</span></h2>
-      <div id="bench-list"><div class="empty">暂无数据</div></div>
-    </section>
-
-    <!-- 训练 -->
-    <section>
-      <h2>微调运行 <span class="hint">runs/*/metrics.json</span></h2>
-      <div id="train-list"><div class="empty">暂无数据</div></div>
+    <!-- ======================= 对话 tab ======================= -->
+    <section id="tab-chat" hidden>
+      <div class="chat-bar">
+        <label>引擎</label>
+        <select id="chat-engine"><option>加载中…</option></select>
+        <label class="chat-param">max_tokens</label>
+        <input id="chat-max-tokens" type="number" value="256" min="1" max="4096" style="width:80px">
+        <label class="chat-param">温度</label>
+        <input id="chat-temperature" type="number" value="0.7" min="0" max="2" step="0.1" style="width:70px">
+        <button class="ghost" id="chat-clear">清空</button>
+      </div>
+      <div class="chat-window" id="chat-window">
+        <div class="chat-hint">选择一个引擎，输入消息开始对话。流式回复实时渲染。</div>
+      </div>
+      <div class="chat-input-row">
+        <textarea id="chat-input" rows="3"
+          placeholder="输入消息，Enter 发送 / Shift+Enter 换行"></textarea>
+        <div class="chat-actions">
+          <button id="chat-send" class="primary">发送</button>
+          <button id="chat-stop" class="ghost" disabled>停止</button>
+        </div>
+      </div>
     </section>
   </main>
 

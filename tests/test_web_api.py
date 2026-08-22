@@ -197,6 +197,67 @@ def test_status_with_live_engine(serve_url):
     assert engine["metrics"]["minillm_tokens_generated_total"] >= 1
 
 
+# ---------------------------------------------------------------- /api/chat
+
+def _chat_cfg(serve_url) -> WebConfig:
+    return WebConfig(
+        serve_name="minillm-test",
+        engines=[{"name": "hf-live", "type": "hf", "base_url": serve_url}],
+    )
+
+
+def test_chat_non_stream(serve_url):
+    client = TestClient(build_web_app(_chat_cfg(serve_url)))
+    resp = client.post("/api/chat", json={
+        "engine": "hf-live",
+        "messages": [{"role": "user", "content": "hi"}],
+        "max_tokens": 8, "temperature": 0.0, "stream": False,
+    })
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["choices"][0]["message"]["content"]
+    assert data["usage"]["completion_tokens"] == 8
+
+
+def test_chat_stream_sse(serve_url):
+    client = TestClient(build_web_app(_chat_cfg(serve_url)))
+    with client.stream("POST", "/api/chat", json={
+        "engine": "hf-live",
+        "messages": [{"role": "user", "content": "stream me"}],
+        "max_tokens": 8, "temperature": 0.0, "stream": True,
+    }) as resp:
+        assert resp.status_code == 200
+        assert "text/event-stream" in resp.headers["content-type"]
+        body = "".join(resp.iter_text())
+    assert "data:" in body
+    assert "[DONE]" in body
+
+
+def test_chat_unknown_engine():
+    client = TestClient(build_web_app(_chat_cfg("http://127.0.0.1:9")))
+    resp = client.post("/api/chat", json={
+        "engine": "nope", "messages": [{"role": "user", "content": "hi"}],
+    })
+    assert resp.status_code == 404
+
+
+def test_chat_engine_unreachable():
+    client = TestClient(build_web_app(_chat_cfg("http://127.0.0.1:1")))
+    resp = client.post("/api/chat", json={
+        "engine": "hf-live", "messages": [{"role": "user", "content": "hi"}],
+    })
+    assert resp.status_code == 503
+
+
+def test_admin_config_three_engines():
+    from minillm.common.utils import load_model_config
+
+    cfg = load_model_config(WebConfig, "configs/web/admin.yaml")
+    names = [e.name for e in cfg.engines]
+    assert names == ["vllm-mlx", "hf-local", "sglang-mlx"]
+    assert any("8010" in e.base_url for e in cfg.engines)
+
+
 def test_status_with_down_engine_graceful():
     cfg = WebConfig(
         serve_name="minillm-test",

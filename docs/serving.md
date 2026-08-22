@@ -31,7 +31,9 @@ uv pip install --python .venv-vllm-metal "mlx==0.32.0" mlx-lm "mlx-vlm>=0.6.2,<0
     "llguidance>=1.7.0,<1.8.0" "apache-tvm-ffi>=0.1.9,<0.1.13" "nanobind==2.10.2"
 uv pip install --python .venv-vllm-metal --no-deps ".tools/wheels/vllm_metal-*.whl"
 
-# ④ 模型：scripts/fetch_model.sh mlx-community/Qwen3-0.6B-4bit
+# ④ 模型（默认原始 fp16；省内存可换 4bit）:
+#    scripts/fetch_model.sh Qwen/Qwen3-0.6B                      # 原始权重（默认，与配置一致）
+#    scripts/fetch_model.sh mlx-community/Qwen3-0.6B-4bit       # 4bit（需同步改配置）
 ```
 
 ### 启动
@@ -40,14 +42,14 @@ uv pip install --python .venv-vllm-metal --no-deps ".tools/wheels/vllm_metal-*.w
 minillm serve --config configs/serve/vllm_mac.yaml   # → http://127.0.0.1:8010
 curl http://127.0.0.1:8010/v1/chat/completions \
   -H 'Content-Type: application/json' \
-  -d '{"model":"data/models/Qwen3-0.6B-4bit","messages":[{"role":"user","content":"你好"}],"max_tokens":64}'
+  -d '{"model":"data/models/Qwen3-0.6B","messages":[{"role":"user","content":"你好"}],"max_tokens":64}'
 ```
 
 ### 说明
 
 - `vllm_mac.yaml` 关键字段：`vllm_use_mlx: true`（省略 CUDA-only 参数）、
   `engine_python: .venv-vllm-metal/bin/python`（vllm 命令取同目录 `bin/vllm`）
-- 已验证：本机 M4 Pro 跑 Qwen3-0.6B-4bit，33s 就绪、中文生成正常、`VLLMAdapter` 全接口（models/completions/stream/metrics）通过
+- 已验证：本机 M4 Pro 跑 Qwen3-0.6B，33s 就绪、中文生成正常、`VLLMAdapter` 全接口（models/completions/stream/metrics）通过
 
 ## Mac (Apple Silicon) 上跑 SGLang — MLX runtime
 
@@ -69,7 +71,9 @@ export SGLANG_BUILD_RUST_EXTS=none
 uv pip install --python ../../.venv-sglang -e "python[srt_mps]"   # mlx + mlx-lm + torch 2.13
 
 # ④ 下载模型（mlx-community 预量化 4bit，~335MB）
-cd ../.. && scripts/fetch_model.sh mlx-community/Qwen3-0.6B-4bit
+# 模型（默认原始 fp16；4bit 为可选）:
+#    scripts/fetch_model.sh Qwen/Qwen3-0.6B
+#    scripts/fetch_model.sh mlx-community/Qwen3-0.6B-4bit（需同步改配置）
 ```
 
 ### 启动
@@ -79,7 +83,7 @@ SGLANG_USE_MLX=1 minillm serve --config configs/serve/sglang_mac.yaml
 # → http://127.0.0.1:30000 （OpenAI API + /metrics 同端口）
 curl http://127.0.0.1:30000/v1/chat/completions \
   -H 'Content-Type: application/json' \
-  -d '{"model":"data/models/Qwen3-0.6B-4bit","messages":[{"role":"user","content":"你好"}],"max_tokens":64}'
+  -d '{"model":"data/models/Qwen3-0.6B","messages":[{"role":"user","content":"你好"}],"max_tokens":64}'
 ```
 
 ### 说明
@@ -87,7 +91,7 @@ curl http://127.0.0.1:30000/v1/chat/completions \
 - 配置 `sglang_mac.yaml` 关键字段：`sglang_use_mlx: true`（自动加 `--disable-cuda-graph`）、
   `engine_python: .venv-sglang/bin/python`（sglang 在独立 venv）、`sglang_metrics: true`（`/metrics` 同端口暴露，Benchmark 交叉验证通道可用）
 - 模型：`mlx-community/<model>-4bit` 预量化直接加载；fp16 模型可加 `--quantization mlx_q4` 现场量化
-- 已验证：本机 M4 Pro 跑 Qwen3-0.6B-4bit，中文生成正常、`SGLangAdapter` 全接口（models/completions/stream/metrics）通过
+- 已验证：本机 M4 Pro 跑 Qwen3-0.6B，中文生成正常、`SGLangAdapter` 全接口（models/completions/stream/metrics）通过
 
 ## 本地启动（engine=hf）
 

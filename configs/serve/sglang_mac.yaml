@@ -7,7 +7,8 @@ host: 127.0.0.1
 port: 30000
 
 model:
-  name_or_path: data/models/Qwen3-0.6B-4bit   # mlx-community 预量化 4bit（fetch_model.sh 拉取）
+  name_or_path: data/models/Qwen3-0.6B   # 原始 fp16 权重（三引擎压测已验证）
+  # 想用 4bit：先 scripts/fetch_model.sh mlx-community/Qwen3-0.6B-4bit 再改回该路径
   dtype: auto
   max_model_len: 8192
 

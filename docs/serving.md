@@ -7,6 +7,47 @@
 | `hf` | Transformers（进程内） | Mac / CPU / GPU | 本地开发、无优化基线、协议演示 |
 | `vllm` | vLLM（外部服务/容器） | NVIDIA GPU | 主推理引擎：Paged Attention / Continuous Batching / KV Cache |
 | `sglang` | SGLang（外部服务/容器） | NVIDIA GPU | Benchmark 对照组 |
+| `sglang`（MLX） | SGLang MLX runtime | **Apple Silicon** | Mac 上的高性能推理（见下节） |
+
+## Mac (Apple Silicon) 上跑 SGLang — MLX runtime
+
+> SGLang 官方已支持 Apple Metal（通过 MLX runtime，`SGLANG_USE_MLX=1`）；vLLM 官方暂不支持 Mac（社区 PR 进行中）。
+
+### 安装（独立 venv，避免污染项目环境）
+
+```bash
+# ① 克隆源码（Apple Metal 支持在 master，PyPI 版暂未发布）
+git clone --depth 1 https://github.com/sgl-project/sglang.git .tools/sglang
+
+# ② 独立 venv + 换 pyproject（srt_mps extra 在 pyproject_other.toml）
+cd .tools/sglang
+uv venv -p 3.12 ../../.venv-sglang
+rm -f python/pyproject.toml && mv python/pyproject_other.toml python/pyproject.toml
+
+# ③ 安装（SGLANG_BUILD_RUST_EXTS=none 跳过 Rust 扩展，无需 cargo；sgl-kernel 原生 kernel 需完整 Xcode，可选）
+export SGLANG_BUILD_RUST_EXTS=none
+uv pip install --python ../../.venv-sglang -e "python[srt_mps]"   # mlx + mlx-lm + torch 2.13
+
+# ④ 下载模型（mlx-community 预量化 4bit，~335MB）
+cd ../.. && scripts/fetch_model.sh mlx-community/Qwen3-0.6B-4bit
+```
+
+### 启动
+
+```bash
+SGLANG_USE_MLX=1 minillm serve --config configs/serve/sglang_mac.yaml
+# → http://127.0.0.1:30000 （OpenAI API + /metrics 同端口）
+curl http://127.0.0.1:30000/v1/chat/completions \
+  -H 'Content-Type: application/json' \
+  -d '{"model":"data/models/Qwen3-0.6B-4bit","messages":[{"role":"user","content":"你好"}],"max_tokens":64}'
+```
+
+### 说明
+
+- 配置 `sglang_mac.yaml` 关键字段：`sglang_use_mlx: true`（自动加 `--disable-cuda-graph`）、
+  `engine_python: .venv-sglang/bin/python`（sglang 在独立 venv）、`sglang_metrics: true`（`/metrics` 同端口暴露，Benchmark 交叉验证通道可用）
+- 模型：`mlx-community/<model>-4bit` 预量化直接加载；fp16 模型可加 `--quantization mlx_q4` 现场量化
+- 已验证：本机 M4 Pro 跑 Qwen3-0.6B-4bit，中文生成正常、`SGLangAdapter` 全接口（models/completions/stream/metrics）通过
 
 ## 本地启动（engine=hf）
 

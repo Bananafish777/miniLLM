@@ -36,6 +36,19 @@ class ServeConfig(BaseModel):
     max_num_seqs: int = Field(default=256, ge=1, description="vLLM: continuous-batching concurrency cap")
     max_num_batched_tokens: int = Field(default=8192, ge=1, description="vLLM: prefill batch token cap")
 
+    # --- SGLang on Apple Silicon (MLX runtime) ---
+    sglang_use_mlx: bool = Field(
+        default=False,
+        description="SGLang MLX runtime (Apple Silicon). Requires sglang built with srt_mps extra; "
+                    "launches with SGLANG_USE_MLX=1 and --disable-cuda-graph",
+    )
+    sglang_metrics: bool = Field(default=True, description="SGLang: expose Prometheus /metrics")
+    engine_python: str | None = Field(
+        default=None,
+        description="Python interpreter for the engine (e.g. .venv-sglang/bin/python when sglang "
+                    "lives in a separate venv); defaults to the current interpreter",
+    )
+
     # --- client defaults (when requests omit sampling params) ---
     default_temperature: float = Field(default=0.7, gt=0.0)
     default_max_tokens: int = Field(default=512, ge=1)

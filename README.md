@@ -15,7 +15,7 @@
 | 模块 | 技术栈 | 说明 |
 | --- | --- | --- |
 | 🎓 微调流水线 | PyTorch · Transformers · PEFT · MLflow | LoRA / QLoRA / 全参三路径；4 种数据格式（alpaca/sharegpt/plain/synthetic）；prompt 掩码；adapter 合并导出；实验追踪 |
-| ⚡ 推理服务 | **vLLM**（主）· SGLang（对比）· Transformers（本地） | OpenAI API 兼容（流式 SSE）；Paged Attention / Continuous Batching / KV Cache 全旋钮化；多引擎适配器 |
+| ⚡ 推理服务 | **vLLM**（主）· SGLang（对比）· **SGLang-MLX**（Apple Silicon）· Transformers（本地） | OpenAI API 兼容（流式 SSE）；Paged Attention / Continuous Batching / KV Cache 全旋钮化；多引擎适配器 |
 | 📊 Benchmark | 自研 asyncio 压测客户端 | 吞吐 / TTFT / ITL / 端到端 / 显存峰值；双通道交叉验证；瓶颈分析；JSON+MD 报告 |
 | 🚀 部署调度 | Docker · docker-compose · Kubernetes · Helm · Kueue | 八服务 Compose 栈；GPU override；Kueue 配额队列；HPA 弹性伸缩 |
 | 📈 可观测性 | Prometheus · Grafana · DCGM · Pushgateway | GPU 利用率/显存/温度；服务吞吐/排队/TTFT 分位；6 条告警规则；Benchmark/训练结果入库 |
@@ -59,6 +59,7 @@ make train CONFIG=configs/train/lora_qwen25_1p5b.yaml     # LoRA 微调 Qwen2.5-
 # 推理服务（M2）— OpenAI 兼容
 make serve CONFIG=configs/serve/hf_tiny.yaml              # 本机（Mac 可跑）
 make serve CONFIG=configs/serve/vllm_qwen25_1p5b.yaml     # vLLM（GPU 环境）
+SGLANG_USE_MLX=1 minillm serve --config configs/serve/sglang_mac.yaml   # SGLang-MLX（Apple Silicon，见 docs/serving.md）
 curl http://127.0.0.1:8000/v1/chat/completions -H 'Content-Type: application/json' \
   -d '{"model":"runs/qwen25-1.5b-lora/export","messages":[{"role":"user","content":"你好"}]}'
 

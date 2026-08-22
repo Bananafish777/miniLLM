@@ -1,0 +1,19 @@
+# SGLang on Apple Silicon（MLX runtime）— Mac 上的高性能推理服务
+# 前置: 独立 venv 安装 sglang[srt_mps]（见 docs/serving.md 的 Mac 章节）
+# 用法: SGLANG_USE_MLX=1 minillm serve --config configs/serve/sglang_mac.yaml
+engine: sglang
+serve_name: minillm-sglang-mlx
+host: 127.0.0.1
+port: 30000
+
+model:
+  name_or_path: data/models/Qwen3-0.6B-4bit   # mlx-community 预量化 4bit（fetch_model.sh 拉取）
+  dtype: auto
+  max_model_len: 8192
+
+sglang_use_mlx: true      # MLX runtime：自动加 --disable-cuda-graph，需 SGLANG_USE_MLX=1
+sglang_metrics: true      # 暴露 /metrics（Benchmark 交叉验证通道）
+engine_python: .venv-sglang/bin/python   # sglang 独立 venv 的解释器
+
+default_temperature: 0.7
+default_max_tokens: 512

@@ -54,14 +54,25 @@ def vllm_command(cfg: ServeConfig) -> list[str]:
 
 
 def sglang_command(cfg: ServeConfig) -> list[str]:
-    """The ``sglang.launch_server`` command equivalent of this config."""
-    return [
-        sys.executable, "-m", "sglang.launch_server",
+    """The ``sglang.launch_server`` command equivalent of this config.
+
+    ``sglang_use_mlx`` 时面向 Apple Silicon（MLX runtime）：加 ``--disable-cuda-graph``，
+    调用方需通过环境变量 ``SGLANG_USE_MLX=1`` 启用（见 serve()）。
+    ``engine_python`` 允许指定独立 venv 的解释器（如 .venv-sglang/bin/python）。
+    """
+    cmd = [
+        cfg.engine_python or sys.executable, "-m", "sglang.launch_server",
         "--model-path", cfg.model.name_or_path,
         "--host", cfg.host, "--port", str(cfg.port),
         "--tp", str(cfg.tensor_parallel_size),
-        "--mem-fraction-static", str(cfg.gpu_memory_utilization),
     ]
+    if cfg.sglang_metrics:
+        cmd.append("--enable-metrics")
+    if cfg.sglang_use_mlx:
+        cmd.append("--disable-cuda-graph")
+    else:
+        cmd += ["--mem-fraction-static", str(cfg.gpu_memory_utilization)]
+    return cmd
 
 
 def docker_hint(cfg: ServeConfig) -> str:
@@ -105,6 +116,20 @@ def serve(cfg: ServeConfig) -> int:
 
     if cfg.engine == "sglang":
         cmd = sglang_command(cfg)
+        if cfg.sglang_use_mlx:
+            log.info("SGLang MLX runtime (Apple Silicon) — SGLANG_USE_MLX=1")
+            import os
+
+            env = {**os.environ, "SGLANG_USE_MLX": "1"}
+            # engine_python 显式指定了引擎解释器（独立 venv），直接信任启动；
+            # 否则要求当前解释器可 import sglang
+            if cfg.engine_python or _sglang_python_available():
+                log.info("launching SGLang(MLX): %s", " ".join(cmd))
+                import subprocess
+
+                return subprocess.call(cmd, env=env)
+            log.warning("SGLang(MLX) 未安装。Mac 上安装步骤见 docs/serving.md（独立 venv + srt_mps extra）。")
+            return 2
         if shutil.which("sglang.launch_server"):
             log.info("launching SGLang: %s", " ".join(cmd))
             import subprocess
@@ -114,3 +139,10 @@ def serve(cfg: ServeConfig) -> int:
         return 2
 
     raise ValueError(f"unknown engine: {cfg.engine}")
+
+
+def _sglang_python_available() -> bool:
+    """True when the current interpreter can import sglang (used for MLX mode)."""
+    import importlib.util
+
+    return importlib.util.find_spec("sglang") is not None

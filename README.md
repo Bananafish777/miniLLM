@@ -84,11 +84,12 @@ helm upgrade --install minillm deploy/helm/minillm --namespace minillm --create-
 
 | 场景 | 结果 |
 | --- | --- |
+| **同机三引擎对比**（Qwen3-0.6B fp16，统一权重） | 并发 8：**vLLM-MLX 481 t/s**（HF 的 32 倍）；SGLang-MLX 并发 4 达 493 t/s 但高并发 Metal OOM；HF 并发越高越慢（40→14 t/s）|
 | 进程内 Transformers 基线（tiny-Llama，并发 1→2） | 72.7 → 76.1 tokens/s，瓶颈分析正确检出**并发饱和** |
 | HTTP 协议路径（vllm 适配器打 HF 服务，并发 1→4） | 68.4 → **122.3 tokens/s（1.8×）**，TTFT p50 0.03s，成功率 100% |
-| 测试套件 | 57 项通过（单元 + 集成 + 部署/Helm 工件校验） |
+| 测试套件 | 74 项通过（单元 + 集成 + 部署/Helm 工件校验） |
 
-> GPU 环境的完整三引擎对比（vLLM vs SGLang vs Transformers，4 档并发 × 2 档输入/输出长度）由 `configs/bench/matrix_qwen25.yaml` 一键产出。
+> 完整三引擎报告见 [docs/benchmark-results.md](docs/benchmark-results.md)；复现：`python scripts/bench_mac.py --matrix full`
 
 ## 测试与质量
 

@@ -112,6 +112,7 @@ make helm-validate      # helm lint + 全量渲染
 | [面试自我介绍](docs/interview-self-intro.md) | 🎤 口述稿（完整版 + 精简版）+ 使用要点 |
 | [项目知识库](docs/project-knowledge.md) | 📚 技术知识体系 + 实测经验与踩坑（面试差异化核心） |
 | [分布式训练问答](docs/distributed-training-qa.md) | 🧠 P0/P1 可背诵版：DDP/TP/PP/ZeRO/通信/FlashAttention |
+| [KV Cache 考点](docs/kv-cache-qa.md) | ⚡ 推理必考：KV Cache 原理/显存公式/优化手段（分页·复用·压缩·换出） |
 | [K8s 学习资料](docs/k8s-learning.md) | ☸️ 面向 AI Infra：GPU 调度/队列/弹性伸缩/面试问答/实操路径 |
 | [开发日志](docs/devlog-2026-08-22.md) | 📝 今日全过程：Mac 引擎接入 / 三引擎压测 / 问题排查 / 扩展方向 |
 | [微调流水线](docs/finetuning.md) | 数据格式、三模式、产物、MLflow |

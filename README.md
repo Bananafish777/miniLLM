@@ -111,6 +111,8 @@ make helm-validate      # helm lint + 全量渲染
 | [面试技术文档](docs/interview.md) | 🎯 项目讲述稿：核心技术问答 / 难点与解决 / 实测数据 / 追问预案 |
 | [面试自我介绍](docs/interview-self-intro.md) | 🎤 口述稿（完整版 + 精简版）+ 使用要点 |
 | [项目知识库](docs/project-knowledge.md) | 📚 技术知识体系 + 实测经验与踩坑（面试差异化核心） |
+| [分布式训练问答](docs/distributed-training-qa.md) | 🧠 P0/P1 可背诵版：DDP/TP/PP/ZeRO/通信/FlashAttention |
+| [K8s 学习资料](docs/k8s-learning.md) | ☸️ 面向 AI Infra：GPU 调度/队列/弹性伸缩/面试问答/实操路径 |
 | [开发日志](docs/devlog-2026-08-22.md) | 📝 今日全过程：Mac 引擎接入 / 三引擎压测 / 问题排查 / 扩展方向 |
 | [微调流水线](docs/finetuning.md) | 数据格式、三模式、产物、MLflow |
 | [模型微调使用指南](docs/training-guide.md) | 🎯 从选模型到部署的完整操作手册（含数据示例/超参速查/FAQ/端到端示例） |

@@ -109,6 +109,8 @@ make helm-validate      # helm lint + 全量渲染
 | --- | --- |
 | [架构设计与技术选型](docs/architecture.md) | 需求分析 / 分层架构 / 选型总表 / ADR / 风险 / 路线图 |
 | [面试技术文档](docs/interview.md) | 🎯 项目讲述稿：核心技术问答 / 难点与解决 / 实测数据 / 追问预案 |
+| [面试自我介绍](docs/interview-self-intro.md) | 🎤 口述稿（完整版 + 精简版）+ 使用要点 |
+| [项目知识库](docs/project-knowledge.md) | 📚 技术知识体系 + 实测经验与踩坑（面试差异化核心） |
 | [开发日志](docs/devlog-2026-08-22.md) | 📝 今日全过程：Mac 引擎接入 / 三引擎压测 / 问题排查 / 扩展方向 |
 | [微调流水线](docs/finetuning.md) | 数据格式、三模式、产物、MLflow |
 | [模型微调使用指南](docs/training-guide.md) | 🎯 从选模型到部署的完整操作手册（含数据示例/超参速查/FAQ/端到端示例） |
